@@ -1,0 +1,6 @@
+targets:
+  $default:
+    builders:
+      freezed:
+        options:
+          add_implicit_final: false
