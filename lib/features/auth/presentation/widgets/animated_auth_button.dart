@@ -26,8 +26,8 @@ class AnimatedAuthButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(isLoading ? 28 : 16),
         gradient: LinearGradient(
           colors: [
-            primaryColor,
-            primaryColor.withBlue(240).withRed(100),
+            Color(0xFF0053DB),
+            Color(0xFF346EF6)
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

@@ -35,7 +35,7 @@ class _AmbientBackgroundState extends State<AmbientBackground>
       children: [
         // Dark Base Color
         Container(
-          color: const Color(0xFF0D0B18),
+          color: const Color(0xFFD3E4FE),
         ),
         // Animated Ambient Circles
         AnimatedBuilder(

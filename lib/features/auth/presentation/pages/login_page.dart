@@ -119,6 +119,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     if (_isLoginMode == isLogin) return;
     FocusScope.of(context).unfocus();
     _clearErrors();
+    _fullNameController.clear();
+    _emailController.clear();
+    _phoneController.clear();
+    _passwordController.clear();
     setState(() {
       _isLoginMode = isLogin;
     });
@@ -253,26 +257,14 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           child: Column(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF6366F1).withValues(alpha: 0.4),
-                                      blurRadius: 24,
-                                      offset: const Offset(0, 8),
-                                    ),
-                                  ],
+                                  color: Colors.white.withValues(alpha: 0.06),
                                 ),
-                                child: const Icon(
-                                  Icons.auto_awesome_rounded,
-                                  color: Colors.white,
-                                  size: 36,
+                                child: ClipOval(
+                                    child: Image.asset('assets/logo.jpeg',width:120 ,height:120 ,
+                                      fit: BoxFit.cover,
+                                    )
                                 ),
                               ),
                               const SizedBox(height: 18),
@@ -282,7 +274,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                   _isLoginMode ? 'Welcome Back' : 'Create Account',
                                   key: ValueKey<bool>(_isLoginMode),
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: Colors.black,
                                     fontSize: 28,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 0.3,
@@ -294,12 +286,13 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                 duration: const Duration(milliseconds: 250),
                                 child: Text(
                                   _isLoginMode
-                                      ? 'Sign in to access your entertainer rewards'
+                                      ? 'Sign in to access your OfferNepal rewards'
                                       : 'Join us to unlock exclusive discounts & offers',
                                   key: ValueKey<bool>(_isLoginMode),
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.6),
+                                    color: Colors.black54,
                                     fontSize: 14,
+                                    fontWeight: FontWeight.w700
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -322,7 +315,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               child: Container(
                                 padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.06),
+                                  color: Color(0xFFEAF1FF),
                                   borderRadius: BorderRadius.circular(28),
                                   border: Border.all(
                                     color: Colors.white.withValues(alpha: 0.12),
@@ -474,7 +467,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                           child: const Text(
                                             'Forgot Password?',
                                             style: TextStyle(
-                                              color: Color(0xFFA5B4FC),
+                                              color: Color( 0xFF346EF6),
+
                                               fontSize: 13,
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -507,14 +501,14 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           children: [
                             Icon(
                               Icons.shield_outlined,
-                              color: Colors.white.withValues(alpha: 0.4),
+                              color: Color(0xFF346EF6),
                               size: 16,
                             ),
                             const SizedBox(width: 6),
                             Text(
                               'Secured with 256-bit encryption',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.4),
+                                color: Color(0xFF346EF6),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),

@@ -42,7 +42,7 @@ class AuthSegmentedControl extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
+                      colors: [Color(0xFF0053DB), Color(0xFF818CF8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),

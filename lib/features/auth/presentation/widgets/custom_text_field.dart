@@ -117,106 +117,110 @@ class _CustomTextFieldState extends State<CustomTextField> {
               ]
             : [],
       ),
-      child: Center(
-        child: TextField(
-          controller: widget.controller,
-          focusNode: _effectiveFocusNode,
-          obscureText: widget.isPassword && _obscureText,
-          keyboardType: widget.keyboardType,
-          textInputAction: widget.textInputAction,
-          onChanged: widget.onChanged,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-          ),
-          onSubmitted: (value) {
-            if (widget.nextFocusNode != null) {
-              FocusScope.of(context).requestFocus(widget.nextFocusNode);
-            }
-            if (widget.onFieldSubmitted != null) {
-              widget.onFieldSubmitted!(value);
-            }
-          },
-          decoration: InputDecoration(
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Center(
+          child: TextField(
+            controller: widget.controller,
+            focusNode: _effectiveFocusNode,
+            obscureText: widget.isPassword && _obscureText,
+            keyboardType: widget.keyboardType,
+            textInputAction: widget.textInputAction,
+            onChanged: widget.onChanged,
+            style: const TextStyle(
+              color: Colors.black,
+              // backgroundColor: Color(0xFFDCE9FF),
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
             ),
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            errorBorder: InputBorder.none,
-            focusedErrorBorder: InputBorder.none,
-            hintText: widget.hintText,
-            hintStyle: TextStyle(
-              color: Colors.white.withValues(alpha: 0.35),
-              fontSize: 14,
-            ),
-            labelText: widget.labelText,
-            labelStyle: TextStyle(
-              color: hasError
-                  ? const Color(0xFFF87171)
-                  : (_isFocused
-                      ? primaryColor
-                      : Colors.white.withValues(alpha: 0.6)),
-              fontSize: 13,
-            ),
-            prefixIcon: Padding(
-              padding: const EdgeInsets.only(left: 14, right: 10),
-              child: Icon(
-                widget.prefixIcon,
+            onSubmitted: (value) {
+              if (widget.nextFocusNode != null) {
+                FocusScope.of(context).requestFocus(widget.nextFocusNode);
+              }
+              if (widget.onFieldSubmitted != null) {
+                widget.onFieldSubmitted!(value);
+              }
+            },
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),fillColor: Color(0xffDCE9FF),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              hintText: widget.hintText,
+              hintStyle: TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+              ),
+              labelText: widget.labelText,
+              labelStyle: TextStyle(
                 color: hasError
                     ? const Color(0xFFF87171)
                     : (_isFocused
                         ? primaryColor
-                        : Colors.white.withValues(alpha: 0.5)),
-                size: 20,
+                        : Color(0xFF346EF6)),
+                fontSize: 13,
               ),
-            ),
-            prefixIconConstraints: const BoxConstraints(
-              minWidth: 44,
-              minHeight: 24,
-            ),
-            suffixIcon: widget.isPassword
-                ? GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _obscureText = !_obscureText;
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        transitionBuilder: (child, anim) => ScaleTransition(
-                          scale: anim,
-                          child: child,
-                        ),
-                        child: Icon(
-                          _obscureText
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          key: ValueKey<bool>(_obscureText),
-                          color: hasError
-                              ? const Color(0xFFF87171)
-                              : Colors.white.withValues(alpha: 0.5),
-                          size: 20,
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 14, right: 10),
+                child: Icon(
+                  widget.prefixIcon,
+                  color: hasError
+                      ? const Color(0xFFF87171)
+                      : (_isFocused
+                          ? primaryColor
+                          : Color(0xFF346EF6)),
+                  size: 20,
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 44,
+                minHeight: 24,
+              ),
+              suffixIcon: widget.isPassword
+                  ? GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _obscureText = !_obscureText;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          transitionBuilder: (child, anim) => ScaleTransition(
+                            scale: anim,
+                            child: child,
+                          ),
+                          child: Icon(
+                            _obscureText
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            key: ValueKey<bool>(_obscureText),
+                            color: hasError
+                                ? const Color(0xFFF87171)
+                                : Color(0xFF346EF6),
+                            size: 20,
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                : (hasError
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 14),
-                        child: Icon(
-                          Icons.error_outline_rounded,
-                          color: Color(0xFFF87171),
-                          size: 20,
-                        ),
-                      )
-                    : null),
+                    )
+                  : (hasError
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 14),
+                          child: Icon(
+                            Icons.error_outline_rounded,
+                            color: Color(0xFFF87171),
+                            size: 20,
+                          ),
+                        )
+                      : null),
+            ),
           ),
         ),
       ),
