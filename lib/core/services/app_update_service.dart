@@ -31,8 +31,7 @@ class AppUpdateInfo {
 }
 
 class AppUpdateService {
-  /// Default public raw JSON endpoint or configurable via server / Firebase Storage URL
-  /// For testing, developers can point this to any raw GitHub gist, Firebase Storage JSON, or local server.
+  /// Default public raw JSON endpoint on GitHub
   static String versionCheckUrl =
       'https://raw.githubusercontent.com/Aryan8872/yellow-book/main/app_version.json';
 
@@ -44,7 +43,10 @@ class AppUpdateService {
   /// Checks if a newer version is available compared to the currently installed app
   static Future<AppUpdateInfo?> checkForUpdate({String? customUrl}) async {
     try {
-      final targetUrl = customUrl ?? versionCheckUrl;
+      final baseUrl = customUrl ?? versionCheckUrl;
+      // Append timestamp query parameter to bypass GitHub Raw CDN caching
+      final targetUrl = '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+      
       final response = await _dio.get(targetUrl);
 
       if (response.statusCode == 200 && response.data != null) {
@@ -55,6 +57,8 @@ class AppUpdateService {
         final updateInfo = AppUpdateInfo.fromJson(data);
         final packageInfo = await PackageInfo.fromPlatform();
         final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 1;
+
+        debugPrint('AppUpdateCheck: Installed Build=$currentBuildNumber, Server Build=${updateInfo.latestBuildNumber}');
 
         if (updateInfo.latestBuildNumber > currentBuildNumber &&
             updateInfo.apkDownloadUrl.isNotEmpty) {
