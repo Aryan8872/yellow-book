@@ -46,6 +46,12 @@ jobs:
           name: entertainer-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
+      - name: Delete existing 'latest' release & tag (so APK asset is always replaced)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: gh release delete latest --yes --cleanup-tag || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Publish Direct Release APK on GitHub
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
