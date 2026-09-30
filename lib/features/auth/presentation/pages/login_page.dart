@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../home/presentation/pages/main_shell_screen.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -213,29 +214,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                 listener: (context, state) {
                   if (state is AuthAuthenticated) {
                     final user = state.user;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: const Color(0xFF10B981),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        content: Row(
-                          children: [
-                            const Icon(Icons.check_circle_rounded, color: Colors.white),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Welcome, ${user.fullName.isNotEmpty ? user.fullName : user.email}!',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => MainShellScreen(user: user)),
                     );
                   } else if (state is AuthError) {
                     setState(() {
