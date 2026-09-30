@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 
 /// A reusable Flat + Glassmorphic container designed to unify the
 /// signature pastel blue theme with frosted glass aesthetics.
+///
+/// Performance note: [BackdropFilter] (blur) is now opt-in via [enableBlur].
+/// It is disabled by default because it forces a full off-screen compositing
+/// pass on every frame, causing severe jank on mid-range Android devices.
+/// The default frosted look is achieved via high-opacity color + border instead.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final double? width;
@@ -15,6 +20,10 @@ class GlassContainer extends StatelessWidget {
   final Border? border;
   final List<BoxShadow>? shadows;
   final VoidCallback? onTap;
+
+  /// Set to true ONLY for hero elements that truly need the frosted-glass
+  /// blur effect and are NOT inside a scrolling list. Defaults to false.
+  final bool enableBlur;
 
   const GlassContainer({
     super.key,
@@ -29,14 +38,15 @@ class GlassContainer extends StatelessWidget {
     this.border,
     this.shadows,
     this.onTap,
+    this.enableBlur = false, // OFF by default for performance
   });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = color ?? Colors.white.withValues(alpha: 0.65);
+    final effectiveColor = color ?? Colors.white.withValues(alpha: 0.88);
     final effectiveBorder = border ??
         Border.all(
-          color: Colors.white.withValues(alpha: 0.8),
+          color: Colors.white.withValues(alpha: 0.85),
           width: 1.5,
         );
 
@@ -64,18 +74,12 @@ class GlassContainer extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              color: effectiveColor,
-              borderRadius: BorderRadius.circular(borderRadius),
-              border: effectiveBorder,
-            ),
-            child: child,
-          ),
-        ),
+        child: enableBlur
+            ? BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+                child: _buildInnerBox(effectiveColor, effectiveBorder),
+              )
+            : _buildInnerBox(effectiveColor, effectiveBorder),
       ),
     );
 
@@ -91,5 +95,26 @@ class GlassContainer extends StatelessWidget {
     }
 
     return content;
+  }
+
+  Widget _buildInnerBox(Color effectiveColor, Border effectiveBorder) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: effectiveColor,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: effectiveBorder,
+        // Subtle gradient overlay gives the frosted look without blur
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.15),
+            Colors.transparent,
+          ],
+        ),
+      ),
+      child: child,
+    );
   }
 }

@@ -57,6 +57,9 @@ dependencies:
   package_info_plus: ^8.1.2
   ota_update: ^7.1.0
 
+  # Image caching — prevents re-download + GPU re-decode on every scroll
+  cached_network_image: ^3.4.1
+
   # Firebase Core
   firebase_core: ^3.8.1
 

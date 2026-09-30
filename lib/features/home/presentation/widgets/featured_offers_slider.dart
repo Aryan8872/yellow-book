@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:entertainer/core/widgets/glass_container.dart';
@@ -92,12 +93,27 @@ class FeaturedOffersSlider extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              item["image"]!,
+            child:           CachedNetworkImage(
+              imageUrl: item["image"]!,
               width: 58,
               height: 58,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
+              placeholder: (context, url) => Container(
+                width: 58,
+                height: 58,
+                color: const Color(0xFFD3E4FE),
+                child: const Center(
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: Color(0xFF346EF6),
+                    ),
+                  ),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
                 width: 58,
                 height: 58,
                 color: const Color(0xFFD3E4FE),

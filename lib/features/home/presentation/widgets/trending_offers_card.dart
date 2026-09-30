@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:entertainer/core/widgets/glass_container.dart';
 import 'package:entertainer/core/widgets/section_heading.dart';
 import 'package:entertainer/features/home/presentation/bloc/home_bloc.dart';
@@ -78,18 +79,34 @@ class TrendingOffersCard extends StatelessWidget {
                       // Image Thumbnail with Frosted Badges
                       Stack(
                         children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-                            child: Image.network(
-                              offer["image"]!,
-                              height: 140,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
+                          RepaintBoundary(
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                              child: CachedNetworkImage(
+                                imageUrl: offer["image"]!,
                                 height: 140,
-                                color: const Color(0xFFD3E4FE),
-                                child: const Center(
-                                  child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFF346EF6)),
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Container(
+                                  height: 140,
+                                  color: const Color(0xFFD3E4FE),
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFF346EF6),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) => Container(
+                                  height: 140,
+                                  color: const Color(0xFFD3E4FE),
+                                  child: const Center(
+                                    child: Icon(Icons.restaurant_rounded, size: 36, color: Color(0xFF346EF6)),
+                                  ),
                                 ),
                               ),
                             ),

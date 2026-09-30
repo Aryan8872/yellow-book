@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:entertainer/core/widgets/glass_container.dart';
 import 'package:entertainer/core/widgets/section_gap_normal.dart';
 import 'package:entertainer/features/home/presentation/bloc/home_bloc.dart';
@@ -116,89 +115,84 @@ class _HomeView extends StatelessWidget {
                 backgroundColor: const Color(0xFFD3E4FE).withValues(alpha: 0.85),
                 expandedHeight: 80,
                 collapsedHeight: 70,
-                flexibleSpace: ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                    child: Container(
-                      color: Colors.transparent,
-                      padding: const EdgeInsets.only(left: 20, right: 20, top: 40, bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                flexibleSpace: Container(
+                  color: const Color(0xFFD3E4FE).withValues(alpha: 0.97),
+                  padding: const EdgeInsets.only(left: 20, right: 20, top: 40, bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Welcome back 👋",
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                ),
-                              ),
-                              Text(
-                                user.fullName.isNotEmpty ? user.fullName : "OfferNepal Club",
-                                style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.black87,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            "Welcome back 👋",
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black.withValues(alpha: 0.6),
+                            ),
                           ),
-                          Row(
-                            children: [
-                              // Savings quick badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.savings_rounded, color: Color(0xFF10B981), size: 16),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      "\$680",
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF059669),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Logout action in glass pill
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: IconButton(
-                                  icon: const Icon(Icons.logout_rounded, color: Colors.black87, size: 20),
-                                  onPressed: () {
-                                    context.read<AuthBloc>().add(const LogoutRequested());
-                                  },
-                                ),
-                              ),
-                            ],
+                          Text(
+                            user.fullName.isNotEmpty ? user.fullName : "OfferNepal Club",
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black87,
+                              letterSpacing: -0.3,
+                            ),
                           ),
                         ],
                       ),
-                    ),
+                      Row(
+                        children: [
+                          // Savings quick badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                width: 1,
+                              ),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.savings_rounded, color: Color(0xFF10B981), size: 16),
+                                SizedBox(width: 4),
+                                Text(
+                                  "\$680",
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF059669),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Logout action in glass pill
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                width: 1,
+                              ),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.logout_rounded, color: Colors.black87, size: 20),
+                              onPressed: () {
+                                context.read<AuthBloc>().add(const LogoutRequested());
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),

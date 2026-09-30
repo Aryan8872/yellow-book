@@ -1,4 +1,4 @@
-import 'dart:ui';
+// dart:ui removed — no BackdropFilter used in nav bar (performance)
 import 'package:flutter/material.dart';
 import 'package:entertainer/features/auth/domain/entities/user.dart';
 import 'package:entertainer/core/services/app_update_service.dart';
@@ -54,14 +54,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return Scaffold(
       extendBody: true,
       backgroundColor: const Color(0xFFD3E4FE),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
+      // RepaintBoundary isolates page content so nav animation doesn't
+      // invalidate the page layer and vice versa
+      body: RepaintBoundary(
+        child: IndexedStack(
+          index: _currentIndex,
+          children: _pages,
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Container(
+          child: RepaintBoundary(
+            child: Container(
             height: 64,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(32),
@@ -78,21 +83,21 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ),
               ],
             ),
+            // No BackdropFilter — replaced with high-opacity solid color
+            // to avoid forcing an off-screen compositing pass each frame
             child: ClipRRect(
               borderRadius: BorderRadius.circular(32),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(32),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      width: 1.5,
-                    ),
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.96),
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    width: 1.5,
                   ),
-                  child: LayoutBuilder(
+                ),
+                child: LayoutBuilder(
                     builder: (context, constraints) {
                       final itemWidth = constraints.maxWidth / _navItems.length;
                       final pillWidth = itemWidth - 4;
@@ -193,6 +198,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ),
               ),
             ),
+          ),
           ),
         ),
       ),
