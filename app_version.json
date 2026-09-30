@@ -1,6 +1,6 @@
 {
-  "latest_build_number": 5,
-  "latest_version_name": "1.0.5",
+  "latest_build_number": 6,
+  "latest_version_name": "1.0.6",
   "apk_download_url": "https://github.com/Aryan8872/yellow-book/releases/latest/download/app-release.apk",
   "release_notes": "• Major Update v2.0.0 (Build 99)\n• Tested and verified in-app OTA auto-updater",
   "is_force_update": false
