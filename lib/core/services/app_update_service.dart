@@ -31,9 +31,9 @@ class AppUpdateInfo {
 }
 
 class AppUpdateService {
-  /// Default public raw JSON endpoint on GitHub
+  /// Default public raw JSON endpoint on GitHub (master branch)
   static String versionCheckUrl =
-      'https://raw.githubusercontent.com/Aryan8872/yellow-book/main/app_version.json';
+      'https://raw.githubusercontent.com/Aryan8872/yellow-book/master/app_version.json';
 
   static final Dio _dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 6),
