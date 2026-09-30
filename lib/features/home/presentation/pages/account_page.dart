@@ -371,8 +371,10 @@ class AccountPage extends StatelessWidget {
     Color? badgeColor,
     VoidCallback? onTap,
   }) {
-    return ListTile(
-      onTap: onTap,
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        onTap: onTap,
       leading: Container(
         width: 38,
         height: 38,
@@ -417,6 +419,7 @@ class AccountPage extends StatelessWidget {
         style: const TextStyle(fontSize: 12.5, color: Colors.black54),
       ),
       trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.black38),
+      ),
     );
   }
 }
