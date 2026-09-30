@@ -1,4 +1,3 @@
-// dart:ui removed — no BackdropFilter used in nav bar (performance)
 import 'package:flutter/material.dart';
 import 'package:entertainer/features/auth/domain/entities/user.dart';
 import 'package:entertainer/core/services/app_update_service.dart';
@@ -54,8 +53,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return Scaffold(
       extendBody: true,
       backgroundColor: const Color(0xFFD3E4FE),
-      // RepaintBoundary isolates page content so nav animation doesn't
-      // invalidate the page layer and vice versa
       body: RepaintBoundary(
         child: IndexedStack(
           index: _currentIndex,
@@ -83,8 +80,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ),
                 ],
               ),
-              // No BackdropFilter — replaced with high-opacity solid color
-              // to avoid forcing an off-screen compositing pass each frame
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(32),
                 child: Container(
@@ -164,21 +159,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            AnimatedCrossFade(
-                                              duration: const Duration(milliseconds: 220),
-                                              crossFadeState: isSelected
-                                                  ? CrossFadeState.showFirst
-                                                  : CrossFadeState.showSecond,
-                                              firstChild: Icon(
-                                                item.activeIcon,
-                                                color: Colors.white,
-                                                size: 20,
-                                              ),
-                                              secondChild: Icon(
-                                                item.icon,
-                                                color: Colors.black54,
-                                                size: 20,
-                                              ),
+                                            Icon(
+                                              isSelected ? item.activeIcon : item.icon,
+                                              color: isSelected ? Colors.white : Colors.black54,
+                                              size: 20,
                                             ),
                                             const SizedBox(width: 6),
                                             Text(item.label),

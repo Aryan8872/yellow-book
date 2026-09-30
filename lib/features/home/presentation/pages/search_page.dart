@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/widgets/glass_container.dart';
 import '../bloc/search_bloc.dart';
-import '../bloc/search_event.dart';
-import '../bloc/search_state.dart';
-import 'offer_detail_page.dart';
+import '../widgets/user_favorites_section.dart';
+import '../widgets/stores_near_you_slider.dart';
 import 'map_discovery_page.dart';
+import 'search_results_page.dart';
 
 class SearchPage extends StatelessWidget {
   const SearchPage({super.key});
@@ -30,12 +31,157 @@ class _SearchViewState extends State<_SearchView> {
   final TextEditingController _searchController = TextEditingController();
 
   final List<String> _categories = [
-    'All',
+    'Restaurants',
+    'Grocery',
+    'Drinks',
     'Dining',
     'Hotels',
     'Activities',
-    'Offers',
   ];
+
+  final List<String> _recentSearches = [
+    'Burgers',
+    'Tribes',
+    'Pizza',
+    'Coffee',
+    'Thamel',
+  ];
+
+  final List<String> _locationAreas = [
+    'Downtown',
+    'Durbar Marg',
+    'Thamel',
+    'Jhamsikhel',
+    'Bela Vista',
+    'Kathmandu Center',
+    'Lalitpur',
+  ];
+
+  final List<FavoriteStoreItem> _userFavorites = const [
+    FavoriteStoreItem(
+      id: '1',
+      label: 'Usina Pasta\nHouse',
+      shortLogo: 'USINA',
+      bg: Color(0xFFF7D417),
+      fg: Color(0xFF222222),
+    ),
+    FavoriteStoreItem(
+      id: '2',
+      label: 'Quiero Café\n& Bistro',
+      shortLogo: 'Q',
+      bg: Color(0xFF1C1C1C),
+      fg: Colors.white,
+    ),
+    FavoriteStoreItem(
+      id: '3',
+      label: 'Saúde Organic\nJuices',
+      shortLogo: 'Saúde',
+      bg: Color(0xFF6B2068),
+      fg: Colors.white,
+    ),
+    FavoriteStoreItem(
+      id: '4',
+      label: 'Japesca\nSushi Bar',
+      shortLogo: 'Japesca',
+      bg: Color(0xFFF08A24),
+      fg: Colors.white,
+    ),
+    FavoriteStoreItem(
+      id: '5',
+      label: 'Oak Artisan\nBurritos',
+      shortLogo: 'Oak',
+      bg: Color(0xFFE8202A),
+      fg: Colors.white,
+    ),
+  ];
+
+  final List<StoreItem> _storesNearYou = const [
+    StoreItem(
+      id: '1',
+      name: 'Galeto Mamma Mia - Bela Vista',
+      logoText: 'GALETO\nMAMMA MIA',
+      logoBg: Color(0xFF1E6B3A),
+      logoFg: Colors.white,
+      category: 'Italian',
+      distance: '0.5 km',
+      time: '30-40 min',
+      price: '\$13.50',
+      sponsored: true,
+    ),
+    StoreItem(
+      id: '2',
+      name: 'Canto do Sabor Kitchen & Grill',
+      logoText: 'CANTO\nSABOR',
+      logoBg: Color(0xFF111111),
+      logoFg: Colors.white,
+      category: 'Home Cooking',
+      distance: '1.1 km',
+      time: '40-50 min',
+      price: 'Free',
+      sponsored: true,
+      freeDelivery: true,
+      freeFrom: 'Free delivery on orders over \$25',
+    ),
+    StoreItem(
+      id: '3',
+      name: 'Jeronimo Burger & Fries',
+      logoText: 'JERONIMO',
+      logoBg: Color(0xFFF7C325),
+      logoFg: Color(0xFF222222),
+      category: 'Fast Food',
+      distance: '0.4 km',
+      time: '25-35 min',
+      price: '\$9.90',
+      verified: true,
+    ),
+    StoreItem(
+      id: '4',
+      name: 'Tribes Restaurant - Downtown',
+      logoText: 'TRIBES',
+      logoBg: Color(0xFF0053DB),
+      logoFg: Colors.white,
+      category: 'Dining',
+      distance: '1.2 km',
+      time: '20-30 min',
+      price: '\$15.00',
+      sponsored: true,
+    ),
+    StoreItem(
+      id: '5',
+      name: 'Green Bowl Healthy Salads',
+      logoText: 'GREEN',
+      logoBg: Color(0xFF10B981),
+      logoFg: Colors.white,
+      category: 'Healthy',
+      distance: '2.5 km',
+      time: '15-25 min',
+      price: '\$12.00',
+      freeDelivery: true,
+      freeFrom: 'Free Delivery',
+    ),
+    StoreItem(
+      id: '6',
+      name: 'Himalayan Java Coffee',
+      logoText: 'JAVA',
+      logoBg: Color(0xFF8B5CF6),
+      logoFg: Colors.white,
+      category: 'Coffee',
+      distance: '0.8 km',
+      time: '10-20 min',
+      price: '\$8.50',
+      verified: true,
+    ),
+  ];
+
+  void _navigateToResults(String query) {
+    if (query.trim().isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SearchResultsPage(query: query),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -49,7 +195,7 @@ class _SearchViewState extends State<_SearchView> {
       backgroundColor: const Color(0xFFD3E4FE),
       body: Stack(
         children: [
-          // Background subtle ambient glow blobs
+          // Background ambient glow blobs
           Positioned(
             top: -40,
             left: -40,
@@ -76,40 +222,11 @@ class _SearchViewState extends State<_SearchView> {
           ),
 
           SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.only(top: 16, bottom: 100),
               children: [
-                // Top Search Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Explore & Search",
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black87,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Find 1,000+ Buy 1 Get 1 Free spots across the city",
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.black.withValues(alpha: 0.55),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // Frosted Glass Search Input Bar with Map Button
+                // 1. Search Bar with Map Toggle Button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -119,7 +236,7 @@ class _SearchViewState extends State<_SearchView> {
                           borderRadius: 20,
                           blur: 16,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                          color: Colors.white.withValues(alpha: 0.8),
+                          color: Colors.white.withValues(alpha: 0.85),
                           child: Row(
                             children: [
                               const Icon(Icons.search_rounded, color: Color(0xFF0053DB), size: 24),
@@ -127,20 +244,17 @@ class _SearchViewState extends State<_SearchView> {
                               Expanded(
                                 child: TextField(
                                   controller: _searchController,
-                                  onChanged: (value) {
-                                    context.read<SearchBloc>().add(SearchQueryChanged(value));
-                                  },
-                                  style: const TextStyle(
-                                    fontSize: 15,
+                                  onSubmitted: _navigateToResults,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14.5,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.black87,
                                   ),
                                   decoration: InputDecoration(
-                                    hintText: 'Search restaurants, hotels, dishes...',
-                                    hintStyle: TextStyle(
+                                    hintText: 'Search restaurants, stores, locations...',
+                                    hintStyle: GoogleFonts.inter(
                                       color: Colors.black.withValues(alpha: 0.4),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.normal,
+                                      fontSize: 13.5,
                                     ),
                                     border: InputBorder.none,
                                     enabledBorder: InputBorder.none,
@@ -153,8 +267,9 @@ class _SearchViewState extends State<_SearchView> {
                                 IconButton(
                                   icon: const Icon(Icons.close_rounded, size: 20, color: Colors.black54),
                                   onPressed: () {
-                                    _searchController.clear();
-                                    context.read<SearchBloc>().add(const SearchCleared());
+                                    setState(() {
+                                      _searchController.clear();
+                                    });
                                   },
                                 ),
                             ],
@@ -162,7 +277,7 @@ class _SearchViewState extends State<_SearchView> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      // Dedicated Map Discovery Action Button
+                      // Map Toggle Button
                       GlassContainer(
                         borderRadius: 20,
                         blur: 16,
@@ -206,287 +321,198 @@ class _SearchViewState extends State<_SearchView> {
                   ),
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
-                // Category Filter Pills
-                BlocBuilder<SearchBloc, SearchState>(
-                  builder: (context, state) {
-                    final currentCategory = state is SearchSuccessState ? state.activeCategory : 'All';
-
-                    return SizedBox(
-                      height: 38,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: _categories.length,
-                        itemBuilder: (context, index) {
-                          final category = _categories[index];
-                          final isSelected = currentCategory == category;
-
-                          return GestureDetector(
-                            onTap: () {
-                              context.read<SearchBloc>().add(SearchCategoryFilterApplied(category));
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                gradient: isSelected
-                                    ? const LinearGradient(
-                                        colors: [Color(0xFF0053DB), Color(0xFF346EF6)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
-                                    : null,
-                                color: isSelected ? null : Colors.white.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Colors.transparent
-                                      : Colors.white.withValues(alpha: 0.85),
-                                  width: 1.2,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: const Color(0xFF0053DB).withValues(alpha: 0.25),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Text(
-                                category,
-                                style: TextStyle(
-                                  color: isSelected ? Colors.white : Colors.black87,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                  fontSize: 12.5,
-                                ),
-                              ),
+                // 2. Category Chips Below Search Bar
+                SizedBox(
+                  height: 38,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) {
+                      final category = _categories[index];
+                      return GestureDetector(
+                        onTap: () => _navigateToResults(category),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              width: 1.2,
                             ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 12),
-
-                // Results Counter & Filter indicator
-                BlocBuilder<SearchBloc, SearchState>(
-                  builder: (context, state) {
-                    final results = state is SearchSuccessState ? state.results : [];
-                    final query = state is SearchSuccessState ? state.query : '';
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            query.isNotEmpty ? "Results for \"$query\"" : "Recommended for You",
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w700,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            category,
+                            style: GoogleFonts.inter(
                               color: Colors.black87,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12.5,
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              "${results.length} Offers",
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF059669),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 8),
-
-                // Search Results Grid/List
-                Expanded(
-                  child: BlocBuilder<SearchBloc, SearchState>(
-                    builder: (context, state) {
-                      if (state is SearchLoadingState) {
-                        return const Center(
-                          child: CircularProgressIndicator(color: Color(0xFF346EF6)),
-                        );
-                      }
-
-                      final results = state is SearchSuccessState ? state.results : [];
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 6, 20, 100),
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: results.length,
-                        itemBuilder: (context, index) {
-                          final item = results[index];
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 14),
-                            child: GlassContainer(
-                              borderRadius: 20,
-                              blur: 16,
-                              padding: const EdgeInsets.all(12),
-                              color: Colors.white.withValues(alpha: 0.8),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => OfferDetailPage(offer: {
-                                      "hotelName": item["hotelName"]!,
-                                      "location": item["location"]!,
-                                      "distanceFromUser": item["distanceFromUser"]!,
-                                      "highlightTag": item["highlightTag"]!,
-                                      "image": item["image"]!,
-                                    }),
-                                  ),
-                                );
-                              },
-                              child: Row(
-                                children: [
-                                  // Offer Image Thumbnail with Tag
-                                  Stack(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: Image.network(
-                                          item["image"]!,
-                                          width: 90,
-                                          height: 90,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) => Container(
-                                            width: 90,
-                                            height: 90,
-                                            color: const Color(0xFFD3E4FE),
-                                            child: const Icon(Icons.restaurant_rounded, color: Color(0xFF346EF6), size: 28),
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 6,
-                                        left: 6,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [Color(0xFF0053DB), Color(0xFF346EF6)],
-                                            ),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: Text(
-                                            item["highlightTag"]!,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(width: 14),
-
-                                  // Details Column
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                item["hotelName"]!,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 15.5,
-                                                  color: Colors.black87,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFFB800)),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  item["rating"] ?? '4.8',
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 11.5,
-                                                    color: Colors.black87,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          item["offerType"] ?? 'Buy 1 Get 1 Free',
-                                          style: const TextStyle(
-                                            fontSize: 12.5,
-                                            color: Color(0xFF059669),
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.location_on_rounded, size: 13, color: Color(0xFF346EF6)),
-                                            const SizedBox(width: 3),
-                                            Expanded(
-                                              child: Text(
-                                                item["location"]!,
-                                                style: const TextStyle(
-                                                  fontSize: 11.5,
-                                                  color: Colors.black54,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            Text(
-                                              item["distanceFromUser"]!,
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.black45,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                        ),
                       );
                     },
                   ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // 3. Recent Searches Section
+                if (_recentSearches.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Recent Searches',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _recentSearches.clear();
+                            });
+                          },
+                          child: Text(
+                            'Clear All',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              color: const Color(0xFF0053DB),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _recentSearches.map((term) {
+                        return InkWell(
+                          onTap: () => _navigateToResults(term),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.history_rounded, size: 14, color: Colors.black54),
+                                const SizedBox(width: 6),
+                                Text(
+                                  term,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // 4. Search By Location Area Header & Tags
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Search By Location Area',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _locationAreas.map((location) {
+                      return InkWell(
+                        onTap: () => _navigateToResults(location),
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: const Color(0xFF346EF6).withValues(alpha: 0.3)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF346EF6).withValues(alpha: 0.08),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF346EF6)),
+                              const SizedBox(width: 5),
+                              Text(
+                                location,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF0053DB),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // 5. My Favorites Section (Positioned ABOVE Stores Near You)
+                UserFavoritesSection(
+                  favorites: _userFavorites,
+                  onFavoriteTap: (item) => _navigateToResults(item.label.replaceAll('\n', ' ')),
+                ),
+
+                const SizedBox(height: 28),
+
+                // 6. Stores Near You Section (3 cards per vertical slide in horizontal carousel)
+                StoresNearYouSlider(
+                  stores: _storesNearYou,
+                  onStoreTap: (store) => _navigateToResults(store.name),
                 ),
               ],
             ),

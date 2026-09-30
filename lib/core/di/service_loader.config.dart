@@ -19,6 +19,11 @@ import '../../features/auth/domain/repositories/auth_repository.dart' as _i787;
 import '../../features/auth/domain/usecases/login_usecase.dart' as _i188;
 import '../../features/auth/domain/usecases/register_usecase.dart' as _i941;
 import '../../features/auth/presentation/bloc/auth_bloc.dart' as _i797;
+import '../../features/home/data/datasources/home_remote_datasource.dart'
+    as _i278;
+import '../../features/home/domain/repositories/home_repository.dart' as _i0;
+import '../../features/home/domain/usecases/get_home_feed_usecase.dart'
+    as _i1054;
 import '../network/dio_client.dart' as _i667;
 import '../storage/token_storage.dart' as _i973;
 import 'dependency_injection.dart' as _i9;
@@ -38,13 +43,19 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i973.TokenStorage>(
         () => dependencyInjection.tokenStorage);
     gh.lazySingleton<_i361.Dio>(() => dependencyInjection.dio());
+    gh.lazySingleton<_i278.HomeRemoteDataSource>(
+        () => dependencyInjection.homeRemoteDataSource());
     gh.lazySingleton<_i1022.AuthRemoteDatasource>(
         () => dependencyInjection.authRemoteDatasource(gh<_i361.Dio>()));
+    gh.lazySingleton<_i0.HomeRepository>(() =>
+        dependencyInjection.homeRepository(gh<_i278.HomeRemoteDataSource>()));
     gh.lazySingleton<_i667.DioClient>(() => dependencyInjection.dioClient(
           gh<_i361.Dio>(),
           gh<_i973.TokenStorage>(),
           gh<_i1022.AuthRemoteDatasource>(),
         ));
+    gh.factory<_i1054.GetHomeFeedUseCase>(
+        () => _i1054.GetHomeFeedUseCase(gh<_i0.HomeRepository>()));
     gh.lazySingleton<_i787.AuthRepository>(
         () => dependencyInjection.authRepository(
               gh<_i1022.AuthRemoteDatasource>(),
