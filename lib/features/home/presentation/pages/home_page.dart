@@ -4,6 +4,7 @@ import 'package:entertainer/features/home/presentation/bloc/home_bloc.dart';
 import 'package:entertainer/features/home/presentation/bloc/home_state.dart';
 import 'package:entertainer/features/home/presentation/pages/offer_detail_page.dart';
 import 'package:entertainer/features/home/presentation/pages/category_offers_page.dart';
+import 'package:entertainer/features/home/presentation/pages/search_results_page.dart';
 import 'package:entertainer/features/home/presentation/widgets/trending_offers_card.dart';
 import 'package:entertainer/features/home/presentation/widgets/category_card.dart';
 import 'package:entertainer/features/home/presentation/widgets/hero_offer_slider.dart';
@@ -11,6 +12,7 @@ import 'package:entertainer/features/home/presentation/widgets/user_reviews_slid
 import 'package:entertainer/features/home/presentation/widgets/featured_offers_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/features/auth/domain/entities/user.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_event.dart';
@@ -66,13 +68,108 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class _HomeView extends StatelessWidget {
+class _HomeView extends StatefulWidget {
   final User user;
 
   const _HomeView({required this.user});
 
   @override
+  State<_HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends State<_HomeView> {
+  final TextEditingController _homeSearchController = TextEditingController();
+
+  void _navigateToResults(String query) {
+    if (query.trim().isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SearchResultsPage(query: query),
+      ),
+    );
+  }
+
+  void _showFilterModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        String selectedSort = 'Distance';
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Filter & Sort Offers',
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+              const SizedBox(height: 16),
+              Text('Sort By', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: ['Distance', 'Rating', 'Popularity', 'Newest'].map((sort) {
+                  final isSelected = selectedSort == sort;
+                  return ChoiceChip(
+                    label: Text(sort),
+                    selected: isSelected,
+                    selectedColor: const Color(0xFF346EF6),
+                    labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+                    onSelected: (val) {
+                      Navigator.pop(context);
+                      _navigateToResults(sort);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _navigateToResults(_homeSearchController.text.isEmpty ? 'All' : _homeSearchController.text);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF346EF6),
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: Text('Apply Filters', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _homeSearchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final user = widget.user;
+
     return Scaffold(
       backgroundColor: const Color(0xFFD3E4FE),
       body: Stack(
@@ -204,35 +301,52 @@ class _HomeView extends StatelessWidget {
                   children: [
                     const SizedBox(height: 12),
 
-                    // Search & Filter Glass Bar
+                    // Interactive Working Search & Filter Glass Bar
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: GlassContainer(
                         borderRadius: 18,
                         blur: 14,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        color: Colors.white.withValues(alpha: 0.7),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        color: Colors.white.withValues(alpha: 0.75),
                         child: Row(
                           children: [
                             const Icon(Icons.search_rounded, color: Color(0xFF346EF6), size: 22),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                "Search restaurants, cafes, hotels...",
-                                style: TextStyle(
+                              child: TextField(
+                                controller: _homeSearchController,
+                                onSubmitted: _navigateToResults,
+                                style: GoogleFonts.inter(
                                   fontSize: 14,
-                                  color: Colors.black.withValues(alpha: 0.5),
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: "Search restaurants, cafes, hotels...",
+                                  hintStyle: GoogleFonts.inter(
+                                    fontSize: 13.5,
+                                    color: Colors.black.withValues(alpha: 0.4),
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                                 ),
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF346EF6).withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
+                            // Filter Button
+                            GestureDetector(
+                              onTap: () => _showFilterModal(context),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF346EF6).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.tune_rounded, color: Color(0xFF0053DB), size: 18),
                               ),
-                              child: const Icon(Icons.tune_rounded, color: Color(0xFF0053DB), size: 18),
                             ),
                           ],
                         ),
@@ -241,14 +355,14 @@ class _HomeView extends StatelessWidget {
 
                     const SizedBox(height: 16),
 
-                    // 1. Hero Offer Slider
+                    // 1. Hero Offer Slider (With pagination dots indicator)
                     const HeroOfferSlider(
                       images: [
-                        'https://img.magnific.com/free-photo/top-view-table-full-food_23-2149209253.jpg?semt=ais_hybrid&w=740&q=80',
-                        'https://static.independent.co.uk/s3fs-public/thumbnails/image/2018/01/12/12/healthy-avo-food.jpg',
-                        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-GyDbcO4oFC8rngIjIlp4oHrvISS-xUkIpj5TUFqB9PYhco-8q06vFkAy&s=10',
-                        'https://img.etimg.com/thumb/width-1200,height-1200,imgsize-1566631,resizemode-75,msid-128680152/news/new-updates/street-food-without-the-guilt-famous-cardiologist-shares-5-tasty-picks-that-are-healthy-and-easy-on-your-pocket.jpg',
-                        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUtskxtcRQKgsVrqfUKwTwVBdzh6RnQfL2nRsFLOgBg67v0_AL5SoPfnh6&s=10',
+                        'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80',
+                        'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
+                        'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
+                        'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80',
+                        'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=800&q=80',
                       ],
                     ),
                     const SectionGapNormal(),
@@ -273,28 +387,28 @@ class _HomeView extends StatelessWidget {
                           "distanceFromUser": "1.2 km away",
                           "highlightTag": "BOGOF",
                           "location": "The Dubai Mall",
-                          "image": "https://img.magnific.com/free-photo/top-view-table-full-food_23-2149209253.jpg?semt=ais_hybrid&w=740&q=80"
+                          "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80"
                         },
                         {
                           "hotelName": "Green Bowl",
                           "distanceFromUser": "2.5 km away",
                           "highlightTag": "Healthy",
                           "location": "Kathmandu",
-                          "image": "https://static.independent.co.uk/s3fs-public/thumbnails/image/2018/01/12/12/healthy-avo-food.jpg"
+                          "image": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=600&q=80"
                         },
                         {
                           "hotelName": "Spicy Hub",
                           "distanceFromUser": "3.1 km away",
                           "highlightTag": "Local",
                           "location": "Lalitpur",
-                          "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-GyDbcO4oFC8rngIjIlp4oHrvISS-xUkIpj5TUFqB9PYhco-8q06vFkAy&s=10"
+                          "image": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80"
                         },
                         {
                           "hotelName": "Urban Bites",
                           "distanceFromUser": "4.0 km away",
                           "highlightTag": "Street Food",
                           "location": "Bhaktapur",
-                          "image": "https://img.etimg.com/thumb/width-1200,height-1200,imgsize-1566631,resizemode-75,msid-128680152/news/new-updates/street-food-without-the-guilt-famous-cardiologist-shares-5-tasty-picks-that-are-healthy-and-easy-on-your-pocket.jpg"
+                          "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80"
                         }
                       ],
                     ),
@@ -308,28 +422,28 @@ class _HomeView extends StatelessWidget {
                           "distanceFromUser": "1.5 km",
                           "highlightTag": "BOGOF",
                           "location": "Thamel",
-                          "image": "https://img.magnific.com/free-photo/top-view-table-full-food_23-2149209253.jpg?semt=ais_hybrid&w=740&q=80"
+                          "image": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=600&q=80"
                         },
                         {
                           "hotelName": "Himalayan Java",
                           "distanceFromUser": "0.8 km",
                           "highlightTag": "Coffee",
                           "location": "Durbar Marg",
-                          "image": "https://static.independent.co.uk/s3fs-public/thumbnails/image/2018/01/12/12/healthy-avo-food.jpg"
+                          "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80"
                         },
                         {
                           "hotelName": "Roadhouse Cafe",
                           "distanceFromUser": "2.1 km",
                           "highlightTag": "BOGOF",
                           "location": "Jhamsikhel",
-                          "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-GyDbcO4oFC8rngIjIlp4oHrvISS-xUkIpj5TUFqB9PYhco-8q06vFkAy&s=10"
+                          "image": "https://images.unsplash.com/photo-1578474846511-04ba529f0b88?auto=format&fit=crop&w=600&q=80"
                         },
                         {
                           "hotelName": "Bhojan Griha",
                           "distanceFromUser": "3.4 km",
                           "highlightTag": "Cultural",
                           "location": "Dillibazar",
-                          "image": "https://img.etimg.com/thumb/width-1200,height-1200,imgsize-1566631,resizemode-75,msid-128680152/news/new-updates/street-food-without-the-guilt-famous-cardiologist-shares-5-tasty-picks-that-are-healthy-and-easy-on-your-pocket.jpg"
+                          "image": "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=600&q=80"
                         },
                       ],
                     ),
