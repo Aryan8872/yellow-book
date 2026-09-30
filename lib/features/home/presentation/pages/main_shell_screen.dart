@@ -67,37 +67,37 @@ class _MainShellScreenState extends State<MainShellScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           child: RepaintBoundary(
             child: Container(
-            height: 64,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0053DB).withValues(alpha: 0.12),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            // No BackdropFilter — replaced with high-opacity solid color
-            // to avoid forcing an off-screen compositing pass each frame
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(32),
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.96),
-                  borderRadius: BorderRadius.circular(32),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    width: 1.5,
+              height: 64,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0053DB).withValues(alpha: 0.12),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
                   ),
-                ),
-                child: LayoutBuilder(
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              // No BackdropFilter — replaced with high-opacity solid color
+              // to avoid forcing an off-screen compositing pass each frame
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.96),
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: LayoutBuilder(
                     builder: (context, constraints) {
                       final itemWidth = constraints.maxWidth / _navItems.length;
                       final pillWidth = itemWidth - 4;
@@ -198,7 +198,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ),
               ),
             ),
-          ),
           ),
         ),
       ),
