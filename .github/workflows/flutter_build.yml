@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
@@ -43,6 +45,19 @@ jobs:
         with:
           name: entertainer-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Publish Direct Release APK on GitHub
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest Tester Build"
+          body: "Direct APK build from GitHub Actions for in-app auto updates."
+          draft: false
+          prerelease: false
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Optional Firebase App Distribution Step (Requires FIREBASE_TOKEN & FIREBASE_ANDROID_APP_ID secrets in GitHub Repository Settings)
       # - name: Upload APK to Firebase App Distribution

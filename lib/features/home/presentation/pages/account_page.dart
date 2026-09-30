@@ -6,6 +6,8 @@ import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_event.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
 import 'package:entertainer/features/auth/presentation/pages/login_page.dart';
+import 'package:entertainer/core/services/app_update_service.dart';
+import 'package:entertainer/core/services/update_available_dialog.dart';
 
 class AccountPage extends StatelessWidget {
   final User user;
@@ -238,6 +240,33 @@ class AccountPage extends StatelessWidget {
                           title: 'Change Password',
                           subtitle: 'Update account credentials',
                         ),
+                        const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFE2E8F0)),
+                        _buildSettingsTile(
+                          icon: Icons.system_update_rounded,
+                          title: 'Check for Updates',
+                          subtitle: 'Tap to check latest build & download',
+                          onTap: () async {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Checking for new updates...'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                            final updateInfo = await AppUpdateService.checkForUpdate();
+                            if (context.mounted) {
+                              if (updateInfo != null) {
+                                UpdateAvailableDialog.show(context, updateInfo);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('App is up to date! 🎉'),
+                                    backgroundColor: Color(0xFF10B981),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -329,8 +358,10 @@ class AccountPage extends StatelessWidget {
     required String subtitle,
     String? badge,
     Color? badgeColor,
+    VoidCallback? onTap,
   }) {
     return ListTile(
+      onTap: onTap,
       leading: Container(
         width: 38,
         height: 38,

@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:entertainer/features/auth/domain/entities/user.dart';
+import 'package:entertainer/core/services/app_update_service.dart';
+import 'package:entertainer/core/services/update_available_dialog.dart';
 import 'home_page.dart';
 import 'search_page.dart';
 import 'account_page.dart';
@@ -33,6 +35,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
       const SearchPage(),
       AccountPage(user: widget.user),
     ];
+
+    // Check for in-app updates automatically on launch
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAppUpdate();
+    });
+  }
+
+  Future<void> _checkAppUpdate() async {
+    final updateInfo = await AppUpdateService.checkForUpdate();
+    if (updateInfo != null && mounted) {
+      UpdateAvailableDialog.show(context, updateInfo);
+    }
   }
 
   @override
