@@ -1,7 +1,7 @@
 {
-  "latest_build_number": 3,
-  "latest_version_name": "1.0.2",
+  "latest_build_number": 4,
+  "latest_version_name": "1.0.3",
   "apk_download_url": "https://github.com/Aryan8872/yellow-book/releases/latest/download/app-release.apk",
-  "release_notes": "• Initial tester release with real GPS map, search, and floating navigation",
+  "release_notes": "• In-App Auto-Update Test Release (v1.0.2 Build 3)\n• Verified master branch GitHub update URL\n• Includes interactive map discovery and GPS location search",
   "is_force_update": false
 }

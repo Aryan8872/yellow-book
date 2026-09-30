@@ -303,6 +303,17 @@ class AccountPage extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  const Center(
+                    child: Text(
+                      'OfferNepal v1.0.2 (Build 3) • Auto-Update Enabled',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black45,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 100), // clearance for floating navbar
                 ],
               ),
