@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ota_update/ota_update.dart';
@@ -36,8 +37,8 @@ class AppUpdateService {
       'https://raw.githubusercontent.com/Aryan8872/yellow-book/master/app_version.json';
 
   static final Dio _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 6),
-    receiveTimeout: const Duration(seconds: 6),
+    connectTimeout: const Duration(seconds: 20),
+    receiveTimeout: const Duration(seconds: 20),
   ));
 
   /// Checks if a newer version is available compared to the currently installed app
@@ -48,13 +49,11 @@ class AppUpdateService {
       final targetUrl = '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}';
       
       final response = await _dio.get(targetUrl);
+      final data = response.data is String ? jsonDecode(response.data):response.data;
 
-      if (response.statusCode == 200 && response.data != null) {
-        final Map<String, dynamic> data = response.data is Map<String, dynamic>
-            ? response.data as Map<String, dynamic>
-            : Map<String, dynamic>.from(response.data as Map);
-
-        final updateInfo = AppUpdateInfo.fromJson(data);
+      if (response.statusCode == 200 && data != null) {
+        final Map<String, dynamic> appData = data;
+        final updateInfo = AppUpdateInfo.fromJson(appData);
         final packageInfo = await PackageInfo.fromPlatform();
         final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 1;
 

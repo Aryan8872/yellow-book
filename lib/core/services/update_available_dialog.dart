@@ -95,7 +95,7 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: GlassContainer(
         borderRadius: 28,
@@ -249,7 +249,10 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
                 children: [
                   if (!widget.updateInfo.isForceUpdate) ...[
                     Expanded(
-                      child: TextButton(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black12
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                         child: Text(
                           'Later',
