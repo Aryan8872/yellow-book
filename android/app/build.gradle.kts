@@ -34,25 +34,20 @@ android {
     }
 
     signingConfigs {
-        val keystoreFile = file("upload-keystore.jks")
-        if (keystoreFile.exists()) {
-            create("release") {
-                storeFile = keystoreFile
-                storePassword = "android"
-                keyAlias = "upload"
-                keyPassword = "android"
-            }
+        create("release") {
+            storeFile = file("app-release-key.jks")
+            storePassword = "offernepal123"
+            keyAlias = "offernepal"
+            keyPassword = "offernepal123"
         }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("release")
+        }
         release {
-            val keystoreFile = file("upload-keystore.jks")
-            if (keystoreFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
-            } else {
-                signingConfig = signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
