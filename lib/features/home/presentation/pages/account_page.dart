@@ -306,7 +306,7 @@ class AccountPage extends StatelessWidget {
                   const SizedBox(height: 16),
                   const Center(
                     child: Text(
-                      'OfferNepal v1.0.2 (Build 3) • Auto-Update Enabled',
+                      'OfferNepal v1.0.9 (Build 9) • Verified OTA Auto-Update',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.black45,
