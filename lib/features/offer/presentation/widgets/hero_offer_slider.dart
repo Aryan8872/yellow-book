@@ -35,7 +35,6 @@ class _HeroOfferSliderState extends State<HeroOfferSlider> {
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
-          // 1. PageView Banner Slider
           PageView.builder(
             controller: _pageController,
             itemCount: widget.images.length,
@@ -82,8 +81,6 @@ class _HeroOfferSliderState extends State<HeroOfferSlider> {
               );
             },
           ),
-
-          // 2. Active Slider Dots Indicator Overlay (At bottom center of card)
           Positioned(
             bottom: 12,
             child: Container(

@@ -12,5 +12,5 @@ class RegisterUsecase {
   RegisterUsecase(this.repository);
 
   Future<Either<Failure,User>> call (RegisterParams params)=>
-      repository.register(params.fullName,params.email,params.phoneNumber,params.password);
+      repository.register(params.name, params.email, params.phone, params.password);
 }

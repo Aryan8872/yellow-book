@@ -6,7 +6,7 @@ class RegisterPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Reuses the unified auth experience with register view
-    return const LoginPage();
+    // Reuses the unified auth experience with register view active
+    return const LoginPage(initialIsRegister: true);
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:entertainer/core/theme/app_theme.dart';
 
 class AuthSegmentedControl extends StatelessWidget {
   final bool isLoginMode;
@@ -13,26 +14,26 @@ class AuthSegmentedControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
+      height: 52,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(16),
+        color: AppTheme.surfaceSubtle,
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: AppTheme.borderLight,
           width: 1,
         ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final tabWidth = (constraints.maxWidth - 8) / 2;
+          final tabWidth = (constraints.maxWidth - 4) / 2;
 
           return Stack(
             children: [
               // Sliding Active Tab Pill
               AnimatedAlign(
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.fastOutSlowIn,
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
                 alignment: isLoginMode
                     ? Alignment.centerLeft
                     : Alignment.centerRight,
@@ -40,16 +41,12 @@ class AuthSegmentedControl extends StatelessWidget {
                   width: tabWidth,
                   height: double.infinity,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0053DB), Color(0xFF818CF8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: AppTheme.darkPill,
+                    borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.35),
-                        blurRadius: 10,
+                        color: AppTheme.darkPill.withValues(alpha: 0.25),
+                        blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
                     ],
@@ -68,13 +65,10 @@ class AuthSegmentedControl extends StatelessWidget {
                         child: AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 200),
                           style: TextStyle(
-                            color: isLoginMode
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.6),
+                            color: isLoginMode ? Colors.white : AppTheme.textSecondary,
+                            fontWeight: isLoginMode ? FontWeight.w700 : FontWeight.w600,
                             fontSize: 14,
-                            fontWeight: isLoginMode
-                                ? FontWeight.bold
-                                : FontWeight.w500,
+                            letterSpacing: -0.2,
                           ),
                           child: const Text('Sign In'),
                         ),
@@ -89,15 +83,12 @@ class AuthSegmentedControl extends StatelessWidget {
                         child: AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 200),
                           style: TextStyle(
-                            color: !isLoginMode
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.6),
+                            color: !isLoginMode ? Colors.white : AppTheme.textSecondary,
+                            fontWeight: !isLoginMode ? FontWeight.w700 : FontWeight.w600,
                             fontSize: 14,
-                            fontWeight: !isLoginMode
-                                ? FontWeight.bold
-                                : FontWeight.w500,
+                            letterSpacing: -0.2,
                           ),
-                          child: const Text('Sign Up'),
+                          child: const Text('Register'),
                         ),
                       ),
                     ),

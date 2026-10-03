@@ -1,7 +1,7 @@
 {
-  "latest_build_number": 10,
-  "latest_version_name": "1.0.10",
+  "latest_build_number": 11,
+  "latest_version_name": "1.0.11",
   "apk_download_url": "https://github.com/Aryan8872/yellow-book/releases/latest/download/app-release.apk",
-  "release_notes": "• Verified production OTA in-app update engine\n• Updated profile release badge\n• Enhanced UI performance",
+  "release_notes": "• UI changes",
   "is_force_update": false
 }

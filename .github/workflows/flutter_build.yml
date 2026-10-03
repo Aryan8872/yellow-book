@@ -35,14 +35,14 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Web Release
-        run: flutter build web --release
+        run: flutter build web --release --dart-define=BASE_URL=https://yellow-bookapi-production.up.railway.app/api/v1
 
       - name: Decode Release Keystore from GitHub Secrets
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/app-release-key.jks
 
       - name: Build Android Release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --dart-define=BASE_URL=https://yellow-bookapi-production.up.railway.app/api/v1
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4

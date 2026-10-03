@@ -1,13 +1,13 @@
 class User {
   final String id;
   final String email;
-  final String fullName;
-  final String phoneNumber;
+  final String name;
+  final String phone;
 
-  User({
+  const User({
     required this.id,
     required this.email,
-    required this.fullName,
-    required this.phoneNumber
-});
+    required this.name,
+    required this.phone,
+  });
 }

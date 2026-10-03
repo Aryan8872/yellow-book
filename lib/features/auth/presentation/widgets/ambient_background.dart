@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:entertainer/core/theme/app_theme.dart';
 
 class AmbientBackground extends StatefulWidget {
   final Widget child;
@@ -33,23 +34,41 @@ class _AmbientBackgroundState extends State<AmbientBackground>
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Dark Base Color
+        // Clean Lavender Milk Canvas
         Container(
-          color: const Color(0xFFD3E4FE),
+          color: AppTheme.canvasBg,
         ),
-        // Animated Ambient Circles
+        // Soft, Subtle Pastel Glow Accents
         AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
             final value = _controller.value;
-            final offset = math.sin(value * math.pi * 2) * 40;
+            final offset = math.sin(value * math.pi * 2) * 25;
 
             return Stack(
               children: [
-                // Top Left Purple Glow Blob
+                // Top Left Periwinkle Tint
                 Positioned(
                   top: -80 + offset,
                   left: -60 + offset,
+                  child: Container(
+                    width: 260,
+                    height: 260,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppTheme.accentPeriwinkle.withValues(alpha: 0.18),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Bottom Right Mint Tint
+                Positioned(
+                  bottom: -60 - offset,
+                  right: -50 - offset,
                   child: Container(
                     width: 280,
                     height: 280,
@@ -57,43 +76,7 @@ class _AmbientBackgroundState extends State<AmbientBackground>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          const Color(0xFF6C5CE7).withValues(alpha: 0.45),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Bottom Right Cyan Glow Blob
-                Positioned(
-                  bottom: -100 - offset,
-                  right: -80 - offset,
-                  child: Container(
-                    width: 320,
-                    height: 320,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          const Color(0xFF00CEC9).withValues(alpha: 0.35),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Center Deep Pink Glow Blob
-                Positioned(
-                  top: MediaQuery.of(context).size.height * 0.35 + (offset * 0.5),
-                  left: MediaQuery.of(context).size.width * 0.2,
-                  child: Container(
-                    width: 220,
-                    height: 220,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          const Color(0xFFFD79A8).withValues(alpha: 0.25),
+                          AppTheme.accentMint.withValues(alpha: 0.22),
                           Colors.transparent,
                         ],
                       ),
@@ -104,7 +87,7 @@ class _AmbientBackgroundState extends State<AmbientBackground>
             );
           },
         ),
-        // Child Content Overlay
+        // Foreground Content
         widget.child,
       ],
     );

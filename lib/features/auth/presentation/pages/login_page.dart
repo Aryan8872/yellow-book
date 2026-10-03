@@ -1,7 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../home/presentation/pages/main_shell_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:entertainer/core/theme/app_theme.dart';
+import 'package:entertainer/core/layout/main_shell_screen.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -11,7 +12,8 @@ import '../widgets/auth_segmented_control.dart';
 import '../widgets/custom_text_field.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final bool initialIsRegister;
+  const LoginPage({super.key, this.initialIsRegister = false});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -31,7 +33,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   final _passwordFocus = FocusNode();
 
   // Mode: true = Login Mode, false = Register Mode
-  bool _isLoginMode = true;
+  late bool _isLoginMode;
 
   // Error States
   String? _fullNameError;
@@ -50,6 +52,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
+    _isLoginMode = !widget.initialIsRegister;
 
     _animationController = AnimationController(
       vsync: this,
@@ -193,7 +196,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           RegisterRequested(
             fullName: _fullNameController.text.trim(),
             email: _emailController.text.trim(),
-            phoneNumber: _phoneController.text.trim(),
+            phone: _phoneController.text.trim(),
             password: _passwordController.text,
           ),
         );
@@ -240,7 +243,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.06),
+                                  color: AppTheme.cardSurface,
+                                  border: Border.all(color: AppTheme.borderLight, width: 2.0),
+                                  boxShadow: AppTheme.softCardShadow,
                                 ),
                                 child: ClipOval(
                                     child: Image.asset('assets/logo.jpeg',width:120 ,height:120 ,
@@ -254,11 +259,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                 child: Text(
                                   _isLoginMode ? 'Welcome Back' : 'Create Account',
                                   key: ValueKey<bool>(_isLoginMode),
-                                  style: const TextStyle(
-                                    color: Colors.black,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: AppTheme.textPrimary,
                                     fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.3,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.4,
                                   ),
                                 ),
                               ),
@@ -270,10 +275,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                       ? 'Sign in to access your OfferNepal rewards'
                                       : 'Join us to unlock exclusive discounts & offers',
                                   key: ValueKey<bool>(_isLoginMode),
-                                  style: TextStyle(
-                                    color: Colors.black54,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: AppTheme.textSecondary,
                                     fontSize: 14,
-                                    fontWeight: FontWeight.w700
+                                    fontWeight: FontWeight.w500,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -284,34 +289,32 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                       ),
                       const SizedBox(height: 28),
 
-                      // Glassmorphic Card Container
+                      // Modern Milk-White Card Container
                       FadeTransition(
                         opacity: _formFade,
                         child: ScaleTransition(
                           scale: _formScale,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(28),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                              child: Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFFEAF1FF),
-                                  borderRadius: BorderRadius.circular(28),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.12),
-                                    width: 1.5,
-                                  ),
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardSurface,
+                              borderRadius: BorderRadius.circular(32),
+                              border: Border.all(
+                                color: AppTheme.borderLight,
+                                width: 1.2,
+                              ),
+                              boxShadow: AppTheme.softCardShadow,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Top Segmented Switcher Pill
+                                AuthSegmentedControl(
+                                  isLoginMode: _isLoginMode,
+                                  onModeChanged: _setMode,
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    // Top Segmented Switcher Pill
-                                    AuthSegmentedControl(
-                                      isLoginMode: _isLoginMode,
-                                      onModeChanged: _setMode,
-                                    ),
-                                    const SizedBox(height: 20),
+                                const SizedBox(height: 20),
+
 
                                     // Form Level Error Banner (Zero Layout Shift on Inputs)
                                     AnimatedCrossFade(
@@ -445,11 +448,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                           onPressed: () {
                                             // Forgot password handling
                                           },
-                                          child: const Text(
+                                          child: Text(
                                             'Forgot Password?',
-                                            style: TextStyle(
-                                              color: Color( 0xFF346EF6),
-
+                                            style: GoogleFonts.plusJakartaSans(
+                                              color: AppTheme.accentPeriwinkleDark,
                                               fontSize: 13,
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -470,8 +472,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               ),
                             ),
                           ),
-                        ),
-                      ),
                       const SizedBox(height: 20),
 
                       // Privacy & Trust Footer
@@ -480,16 +480,16 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.shield_outlined,
-                              color: Color(0xFF346EF6),
+                              color: AppTheme.accentPeriwinkleDark,
                               size: 16,
                             ),
                             const SizedBox(width: 6),
                             Text(
                               'Secured with 256-bit encryption',
-                              style: TextStyle(
-                                color: Color(0xFF346EF6),
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppTheme.accentPeriwinkleDark,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),

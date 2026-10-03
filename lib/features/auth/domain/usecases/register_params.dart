@@ -1,13 +1,13 @@
 class RegisterParams {
-  final String fullName;
+  final String name;
   final String email;
-  final String phoneNumber;
+  final String phone;
   final String password;
 
   const RegisterParams({
-    required this.fullName,
+    required this.name,
     required this.email,
-    required this.phoneNumber,
-    required this.password
-});
+    required this.phone,
+    required this.password,
+  });
 }

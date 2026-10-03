@@ -27,6 +27,9 @@ import '../../features/home/domain/usecases/get_home_feed_usecase.dart'
 import '../network/dio_client.dart' as _i667;
 import '../storage/token_storage.dart' as _i973;
 import 'dependency_injection.dart' as _i9;
+import '../../features/offer/data/datasource/remote_data_source.dart' as _i500;
+import '../../features/offer/domain/repository/offer_repository.dart' as _i502;
+import '../../features/offer/domain/usecases/offer_usecase.dart' as _i503;
 
 extension GetItInjectableX on _i174.GetIt {
 // initializes the registration of main-scope dependencies inside of GetIt
@@ -42,7 +45,8 @@ extension GetItInjectableX on _i174.GetIt {
     final dependencyInjection = _$DependencyInjection();
     gh.lazySingleton<_i973.TokenStorage>(
         () => dependencyInjection.tokenStorage);
-    gh.lazySingleton<_i361.Dio>(() => dependencyInjection.dio());
+    gh.lazySingleton<_i361.Dio>(
+        () => dependencyInjection.dio(gh<_i973.TokenStorage>()));
     gh.lazySingleton<_i278.HomeRemoteDataSource>(
         () => dependencyInjection.homeRemoteDataSource());
     gh.lazySingleton<_i1022.AuthRemoteDatasource>(
@@ -69,6 +73,20 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i188.LoginUsecase>(),
           gh<_i941.RegisterUsecase>(),
         ));
+    gh.lazySingleton<_i500.RemoteDataSource>(
+        () => dependencyInjection.offerRemoteDataSource(gh<_i361.Dio>()));
+    gh.lazySingleton<_i502.OfferRepository>(
+        () => dependencyInjection.offerRepository(gh<_i500.RemoteDataSource>()));
+    gh.factory<_i503.GetOfferByIdUsecase>(
+        () => _i503.GetOfferByIdUsecase(gh<_i502.OfferRepository>()));
+    gh.factory<_i503.GetPaginatedOffersUsecase>(
+        () => _i503.GetPaginatedOffersUsecase(gh<_i502.OfferRepository>()));
+    gh.factory<_i503.CreateOfferUsecase>(
+        () => _i503.CreateOfferUsecase(gh<_i502.OfferRepository>()));
+    gh.factory<_i503.UpdateOfferUsecase>(
+        () => _i503.UpdateOfferUsecase(gh<_i502.OfferRepository>()));
+    gh.factory<_i503.DeleteOfferUsecase>(
+        () => _i503.DeleteOfferUsecase(gh<_i502.OfferRepository>()));
     return this;
   }
 }

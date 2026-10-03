@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// A custom vector painter that draws an architectural styled cartographic map
-/// with roads, arterial avenues, city blocks, parks, waterways, and live user beacon.
 class InteractiveCityMapPainter extends CustomPainter {
   final double userOffsetX;
   final double userOffsetY;
@@ -17,11 +15,9 @@ class InteractiveCityMapPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
 
-    // 1. Base Map Canvas (Light Pastel Slate)
     final bgPaint = Paint()..color = const Color(0xFFE2EAF8);
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
 
-    // 2. Waterways / River (Elegant Pastel Cerulean)
     final riverPaint = Paint()
       ..color = const Color(0xFFB9D5FD)
       ..style = PaintingStyle.stroke
@@ -40,12 +36,10 @@ class InteractiveCityMapPainter extends CustomPainter {
       );
     canvas.drawPath(riverPath, riverPaint);
 
-    // 3. Parks & Green Reserves
     final parkPaint = Paint()
       ..color = const Color(0xFFD1F2D9).withValues(alpha: 0.85)
       ..style = PaintingStyle.fill;
 
-    // Park 1 (North-west)
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(size.width * 0.08, size.height * 0.08, size.width * 0.24, size.height * 0.16),
@@ -54,7 +48,6 @@ class InteractiveCityMapPainter extends CustomPainter {
       parkPaint,
     );
 
-    // Park 2 (South-east botanical reserve)
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(size.width * 0.62, size.height * 0.62, size.width * 0.30, size.height * 0.20),
@@ -63,7 +56,6 @@ class InteractiveCityMapPainter extends CustomPainter {
       parkPaint,
     );
 
-    // 4. Secondary Residential & Commercial City Grid
     final gridRoadPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.85)
       ..style = PaintingStyle.stroke
@@ -85,7 +77,6 @@ class InteractiveCityMapPainter extends CustomPainter {
       );
     }
 
-    // 5. Major Arterial Avenues & Highways
     final highwayPaint = Paint()
       ..color = const Color(0xFFFED7AA)
       ..style = PaintingStyle.stroke
@@ -109,24 +100,20 @@ class InteractiveCityMapPainter extends CustomPainter {
     canvas.drawPath(h2, highwayBorder);
     canvas.drawPath(h2, highwayPaint);
 
-    // 6. User Current Location Pulse Radar
     final userX = size.width * userOffsetX;
     final userY = size.height * userOffsetY;
 
-    // Expanding Pulse Wave
     final pulsePaint = Paint()
       ..color = const Color(0xFF346EF6).withValues(alpha: (1.0 - pulseAnimation).clamp(0.0, 0.4))
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(userX, userY), 20 + (pulseAnimation * 26), pulsePaint);
 
-    // Secondary Pulse Wave
     final secondPulse = (pulseAnimation + 0.5) % 1.0;
     final pulsePaint2 = Paint()
       ..color = const Color(0xFF346EF6).withValues(alpha: (1.0 - secondPulse).clamp(0.0, 0.25))
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(userX, userY), 15 + (secondPulse * 30), pulsePaint2);
 
-    // Solid Beacon Halo
     final beaconBorder = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
@@ -137,7 +124,6 @@ class InteractiveCityMapPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(userX, userY), 7, beaconCore);
 
-    // Subtle user beam indicator
     final beamPaint = Paint()
       ..color = const Color(0xFF346EF6).withValues(alpha: 0.25)
       ..style = PaintingStyle.fill;
