@@ -9,4 +9,6 @@ abstract class OfferRepository {
   Future<Either<Failure, OfferEntity>> createOffer(CreateOfferParams params);
   Future<Either<Failure, OfferEntity>> updateOffer(UpdateOfferParams params);
   Future<Either<Failure, bool>> deleteOffer(DeleteOfferParams params);
+  Future<Either<Failure, bool>> trackOfferView(String offerId);
+  Future<Either<Failure, bool>> trackOfferRedemption(String offerId);
 }

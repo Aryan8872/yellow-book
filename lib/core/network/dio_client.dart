@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:entertainer/core/storage/token_storage.dart';
-import 'package:entertainer/features/auth/data/datasources/remote/auth_remote_datasource.dart';
+import '../storage/token_storage.dart';
+import '../../features/auth/data/datasources/remote/auth_remote_datasource.dart';
+import 'base_urls.dart';
 
 class DioClient {
   final Dio dio;
   final TokenStorage storage;
-  final AuthRemoteDatasource authRemote; // ensure class name exactly matches your datasource
+  final AuthRemoteDatasource authRemote;
   final String baseUrl;
   bool _isRefreshing = false;
 
@@ -17,9 +18,9 @@ class DioClient {
     required this.dio,
     required this.storage,
     required this.authRemote,
-    required this.baseUrl,
-  }) {
-    dio.options.baseUrl = baseUrl;
+    String? baseUrl,
+  }) : baseUrl = (baseUrl != null && baseUrl.isNotEmpty) ? baseUrl : BaseUrls.current {
+    dio.options.baseUrl = this.baseUrl;
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         final access = storage.accessToken;
@@ -32,7 +33,7 @@ class DioClient {
         final status = error.response?.statusCode;
         final opts = error.requestOptions;
 
-        if (status == 401 && storage.refreshToken != null) {
+        if (status == 401 && storage.refreshToken != null && storage.refreshToken!.isNotEmpty) {
           if (_isRefreshing) {
             // queue this request and wait for refresh to complete
             final completer = Completer<Response<dynamic>>();

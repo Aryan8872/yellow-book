@@ -9,6 +9,7 @@ import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
 import 'package:entertainer/features/auth/presentation/pages/login_page.dart';
 import 'package:entertainer/core/services/app_update_service.dart';
 import 'package:entertainer/core/services/update_available_dialog.dart';
+import 'package:entertainer/features/profile/presentation/pages/my_vouchers_page.dart';
 
 class AccountPage extends StatelessWidget {
   final User user;
@@ -275,6 +276,20 @@ class AccountPage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                 child: Column(
                   children: [
+                    _buildSettingsTile(
+                      icon: Icons.confirmation_number_rounded,
+                      title: 'My Vouchers & Redemptions',
+                      subtitle: 'Active QR passes & savings history',
+                      badge: 'PASSES',
+                      badgeColor: AppTheme.pastelPeriwinkle,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MyVouchersPage()),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1, indent: 56, endIndent: 16, color: AppTheme.borderSubtle),
                     _buildSettingsTile(
                       icon: Icons.card_membership_rounded,
                       title: 'Annual All-Access Pass',

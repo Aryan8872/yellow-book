@@ -40,6 +40,7 @@ class AppTheme {
   static const Color pastelCoral = Color(0xFFFF5C67);
 
   // Backward compatibility aliases
+  static const Color scaffoldBg = canvasBg;
   static const Color accentPeriwinkle = pastelPeriwinkle;
   static const Color accentPeriwinkleDark = Color(0xFF8270F5);
   static const Color accentMint = pastelMint;

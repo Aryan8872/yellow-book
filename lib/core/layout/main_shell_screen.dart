@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
+import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/features/auth/domain/entities/user.dart';
 import 'package:entertainer/core/services/app_update_service.dart';
 import 'package:entertainer/core/services/update_available_dialog.dart';
 import 'package:entertainer/features/home/presentation/pages/home_page.dart';
 import 'package:entertainer/features/search/presentation/pages/search_page.dart';
-import 'package:entertainer/features/profile/presentation/pages/account_page.dart';
+import 'package:entertainer/features/profile/presentation/pages/profile_page.dart';
+import 'package:entertainer/features/offer/presentation/pages/favourites_page.dart';
+import 'package:entertainer/features/offer/presentation/bloc/favourites_bloc.dart';
 
 /// Global App Shell Layout container (`MainShellScreen`)
 /// Implements the floating minimalist black capsule dock from Screenshot 3:
@@ -29,6 +33,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   final List<({IconData icon, IconData activeIcon, String label})> _navItems = const [
     (icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home'),
     (icon: Icons.search_rounded, activeIcon: Icons.search_rounded, label: 'Explore'),
+    (icon: Icons.favorite_border_rounded, activeIcon: Icons.favorite_rounded, label: 'Saved'),
     (icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profile'),
   ];
 
@@ -38,7 +43,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _pages = [
       HomePage(user: widget.user),
       const SearchPage(),
-      AccountPage(user: widget.user),
+      BlocProvider(
+        create: (_) => getIt<FavouritesBloc>()..add(const FavouritesLoadRequested()),
+        child: const FavouritesPage(),
+      ),
+      const ProfilePage(),
     ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {

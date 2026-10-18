@@ -2,8 +2,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/di/service_loader.dart';
+import 'core/layout/main_shell_screen.dart';
+import 'core/services/push_notification_service.dart';
+import 'core/storage/token_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/bloc/auth_event.dart';
+import 'features/auth/presentation/bloc/auth_state.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'firebase_options.dart';
 
@@ -47,12 +52,16 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // Initialise FCM push notifications after Firebase is ready
+    await PushNotificationService().init();
   } catch (e, st) {
     developer.log('Firebase initialization error (proceeding with fallback): $e', error: e, stackTrace: st);
   }
 
   try {
     await configureDependencies();
+    // Initialize token storage from secure storage
+    await getIt<TokenStorage>().init();
   } catch (e, st) {
     developer.log('configureDependencies error: $e', error: e, stackTrace: st);
   }
@@ -66,14 +75,54 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<AuthBloc>(
-      create: (context) => getIt<AuthBloc>(),
+      create: (context) {
+        final bloc = getIt<AuthBloc>();
+        if (getIt<TokenStorage>().hasAccess()) {
+          bloc.add(const CheckAuthStatusRequested());
+        }
+        return bloc;
+      },
       child: MaterialApp(
         title: 'OfferNepal',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         themeMode: ThemeMode.light,
-        home: const LoginPage(),
+        home: const _AuthGate(),
       ),
+    );
+  }
+}
+
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    // If no token exists at all, immediately display LoginPage
+    if (!getIt<TokenStorage>().hasAccess()) {
+      return const LoginPage();
+    }
+
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        // Can handle global side effects if any
+      },
+      builder: (context, state) {
+        if (state is AuthAuthenticated) {
+          return MainShellScreen(user: state.user);
+        } else if (state is AuthLoading) {
+          return const Scaffold(
+            backgroundColor: AppTheme.canvasBg,
+            body: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentPeriwinkle),
+              ),
+            ),
+          );
+        }
+        // AuthInitial or AuthError fallback
+        return const LoginPage();
+      },
     );
   }
 }

@@ -2,6 +2,11 @@ sealed class AuthEvent {
   const AuthEvent();
 }
 
+/// Dispatched on app startup to check if a saved token exists and hydrate user profile from /auth/me
+final class CheckAuthStatusRequested extends AuthEvent {
+  const CheckAuthStatusRequested();
+}
+
 final class LoginRequested extends AuthEvent {
   final String email;
   final String password;

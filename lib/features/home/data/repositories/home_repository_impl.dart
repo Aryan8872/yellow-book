@@ -2,21 +2,26 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failure.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/entities/home_feed_data.dart';
-import '../../domain/entities/offer_entity.dart';
 import '../../domain/entities/review_entity.dart';
 import '../../domain/repositories/home_repository.dart';
+import '../../../offer/domain/entity/offer_entity.dart' as offer_module_entity;
 import '../datasources/home_remote_datasource.dart';
+import '../datasources/category_remote_datasource.dart';
 
 class HomeRepositoryImpl implements HomeRepository {
   final HomeRemoteDataSource remoteDataSource;
+  final CategoryRemoteDataSource categoryRemoteDataSource;
 
-  HomeRepositoryImpl({required this.remoteDataSource});
+  HomeRepositoryImpl({
+    required this.remoteDataSource,
+    required this.categoryRemoteDataSource,
+  });
 
   @override
   Future<Either<Failure, HomeFeedData>> getHomeFeedData() async {
     try {
-      final trendingDtos = await remoteDataSource.fetchTrendingOffers();
-      final featuredDtos = await remoteDataSource.fetchFeaturedOffers();
+      final homeData = await remoteDataSource.fetchHomeData();
+      final categories = await categoryRemoteDataSource.getCategories();
 
       final feedData = HomeFeedData(
         heroSliderImages: const [
@@ -24,15 +29,16 @@ class HomeRepositoryImpl implements HomeRepository {
           'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
           'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
         ],
-        categories: const [
-          CategoryEntity(id: '1', name: 'Nearby', iconPath: 'assets/category/nearby.png'),
-          CategoryEntity(id: '2', name: 'Dining', iconPath: 'assets/category/dining.png'),
-          CategoryEntity(id: '3', name: 'Activities', iconPath: 'assets/category/activities.png'),
-          CategoryEntity(id: '4', name: 'Offers', iconPath: 'assets/category/discounts.png'),
-          CategoryEntity(id: '5', name: 'Hotels', iconPath: 'assets/category/hotels.png'),
-        ],
-        trendingOffers: trendingDtos.map((dto) => dto.toEntity()).toList(),
-        featuredOffers: featuredDtos.map((dto) => dto.toEntity()).toList(),
+        categories: categories.map((dto) => CategoryEntity(
+          id: dto.id,
+          name: dto.name,
+          iconPath: dto.iconUrl ?? '',
+          offerCount: dto.offerCount,
+          color: dto.color,
+        )).toList(),
+        trendingOffers: homeData.trending.map((dto) => dto.toEntity()).toList(),
+        featuredOffers: homeData.featured.map((dto) => dto.toEntity()).toList(),
+        popularOffers: homeData.popular.map((dto) => dto.toEntity()).toList(),
         communityReviews: const [
           ReviewEntity(
             id: '1',
@@ -68,11 +74,12 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  Future<Either<Failure, List<OfferEntity>>> searchOffers(String query) async {
+  Future<Either<Failure, List<offer_module_entity.OfferEntity>>> searchOffers(String query) async {
     try {
-      final trendingDtos = await remoteDataSource.fetchTrendingOffers();
-      final filtered = trendingDtos
-          .where((o) => o.merchantName.toLowerCase().contains(query.toLowerCase()) || o.title.toLowerCase().contains(query.toLowerCase()))
+      final homeData = await remoteDataSource.fetchHomeData();
+      final allOffers = [...homeData.featured, ...homeData.trending, ...homeData.popular];
+      final filtered = allOffers
+          .where((o) => (o.merchantName?.toLowerCase().contains(query.toLowerCase()) ?? false) || o.title.toLowerCase().contains(query.toLowerCase()))
           .map((dto) => dto.toEntity())
           .toList();
       return Right(filtered);

@@ -1,13 +1,17 @@
-import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
+import 'package:entertainer/core/config/map_config.dart';
+import 'package:entertainer/features/map/presentation/widgets/offer_map_drawer.dart';
+import 'package:entertainer/features/map/presentation/widgets/map_search_overlay.dart';
 import '../bloc/map_bloc.dart';
 import '../bloc/map_event.dart';
 import '../bloc/map_state.dart';
+import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 import 'package:entertainer/features/offer/presentation/pages/offer_detail_page.dart';
 
 class MapDiscoveryPage extends StatelessWidget {
@@ -16,11 +20,12 @@ class MapDiscoveryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => MapBloc()..add(const MapInitialLoadRequested()),
+      create: (context) => getIt<MapBloc>()..add(const MapInitialLoadRequested()),
       child: const _MapDiscoveryView(),
     );
   }
 }
+
 
 class _MapDiscoveryView extends StatefulWidget {
   const _MapDiscoveryView();
@@ -32,7 +37,11 @@ class _MapDiscoveryView extends StatefulWidget {
 class _MapDiscoveryViewState extends State<_MapDiscoveryView>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  final MapController _mapController = MapController();
+  MapLibreMapController? _mapController;
+
+  // Offer drawer state (slide-in panel on pin tap)
+  bool _isDrawerOpen = false;
+  Map<String, dynamic>? _drawerMerchant;
 
   final List<String> _categories = [
     'All',
@@ -119,34 +128,99 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
     });
   }
 
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Dining':
-        return Icons.restaurant_rounded;
-      case 'Hotels':
-        return Icons.hotel_rounded;
-      case 'Activities':
-        return Icons.spa_rounded;
-      case 'Offers':
-        return Icons.local_offer_rounded;
-      default:
-        return Icons.place_rounded;
+
+  void _addMarkers(MapLoadedState state) {
+    if (_mapController == null) return;
+    _mapController!.clearSymbols();
+    for (final merchant in state.merchants) {
+      final lat = merchant['lat'] as double?;
+      final lng = merchant['lng'] as double?;
+      if (lat == null || lng == null) continue;
+      _mapController!.addSymbol(
+        SymbolOptions(
+          geometry: LatLng(lat, lng),
+          iconImage: 'map_pin', // registered after style load
+          iconSize: 0.10,
+          iconAnchor: 'bottom',
+          textField: merchant['hotelName'] as String? ?? '',
+          textOffset: const Offset(0, 1.5),
+          textSize: 11,
+          textColor: '#1A1A2E',
+          textHaloColor: '#FFFFFF',
+          textHaloWidth: 1.5,
+        ),
+        {'merchant': merchant},
+      );
     }
   }
 
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'Dining':
-        return const Color(0xFFEF4444);
-      case 'Hotels':
-        return AppTheme.accentPeriwinkleDark;
-      case 'Activities':
-        return AppTheme.savingsGreen;
-      case 'Offers':
-        return const Color(0xFFE5A93C);
-      default:
-        return AppTheme.darkPill;
+  Future<void> _onStyleLoaded(MapLoadedState state) async {
+    if (_mapController == null) return;
+    // Register the pin image
+    final imageBytes = await _loadAssetBytes('assets/images/map_pin.png');
+    if (imageBytes != null) {
+      await _mapController!.addImage('map_pin', imageBytes);
     }
+    _addMarkers(state);
+    // Symbol tap handler
+    _mapController!.onSymbolTapped.add((symbol) {
+      final merchant = symbol.data?['merchant'] as Map<String, dynamic>?;
+      if (merchant != null) {
+        // Fly-to with slight north offset so drawer doesn't cover pin
+        final lat = merchant['lat'] as double?;
+        final lng = merchant['lng'] as double?;
+        if (lat != null && lng != null) {
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLngZoom(LatLng(lat - 0.002, lng), 15.0),
+          );
+        }
+        if (mounted) setState(() { _isDrawerOpen = true; _drawerMerchant = merchant; });
+        context.read<MapBloc>().add(MapMerchantSelected(merchant));
+      }
+    });
+  }
+
+  Future<Uint8List?> _loadAssetBytes(String assetPath) async {
+    try {
+      final data = await DefaultAssetBundle.of(context).load(assetPath);
+      return data.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _closeDrawer() {
+    if (mounted) setState(() => _isDrawerOpen = false);
+    context.read<MapBloc>().add(const MapCardDismissed());
+  }
+
+  List<Widget> _buildMarkerOverlays(MapLoadedState state, LatLng userLatLng) {
+    final overlays = <Widget>[];
+
+    // User location beacon - centered on screen for now
+    // In a full implementation, this would be positioned using toScreenLocation
+    overlays.add(
+      Positioned(
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        child: IgnorePointer(
+          child: Center(
+            child: _UserBeacon(),
+          ),
+        ),
+      ),
+    );
+
+    // Note: Proper marker positioning with MapLibre requires using
+    // the controller's toScreenLocation method in a callback after
+    // the map is fully loaded. For now, we'll use Symbol annotations
+    // directly on the map for better performance and positioning.
+    // This is a simplified approach - the full implementation would
+    // use MapLibre's SymbolLayer for marker rendering.
+
+    return overlays;
   }
 
   @override
@@ -155,11 +229,16 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
       backgroundColor: AppTheme.canvasBg,
       body: BlocConsumer<MapBloc, MapState>(
         listener: (context, state) {
-          if (state is MapLoadedState && state.userLocation != null) {
+          if (state is MapLoadedState && state.userLocation != null && _mapController != null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 try {
-                  _mapController.move(state.userLocation!, 14.0);
+                  _mapController!.animateCamera(
+                    CameraUpdate.newLatLngZoom(
+                      LatLng(state.userLocation!.latitude, state.userLocation!.longitude),
+                      14.0,
+                    ),
+                  );
                 } catch (_) {}
               }
             });
@@ -273,75 +352,41 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
   }
 
   Widget _buildMapScreen(BuildContext context, MapLoadedState state) {
-    final userLatLng = state.userLocation ?? const LatLng(27.7172, 85.3240);
+    final userLatLng = state.userLocation != null
+        ? LatLng(state.userLocation!.latitude, state.userLocation!.longitude)
+        : const LatLng(MapConfig.defaultLatitude, MapConfig.defaultLongitude);
 
     return Stack(
       fit: StackFit.expand,
       children: [
         // ── MAP ──────────────────────────────────────────────────────────
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: userLatLng,
-            initialZoom: 14.0,
-            minZoom: 3.0,
-            maxZoom: 19.0,
-            onTap: (tapPos, _) {
-              context.read<MapBloc>().add(const MapCardDismissed());
-            },
+        MapLibreMap(
+          initialCameraPosition: CameraPosition(
+            target: userLatLng,
+            zoom: 14.0,
           ),
-          children: [
-            TileLayer(
-              urlTemplate:
-                  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-              subdomains: const ['a', 'b', 'c'],
-              userAgentPackageName: 'com.entertainer.yellowbook.app',
-              maxZoom: 19,
+          styleString: MapConfig.styleUrl,
+          minMaxZoomPreference: const MinMaxZoomPreference(3.0, 19.0),
+          cameraTargetBounds: CameraTargetBounds(
+            LatLngBounds(
+              // Nepal bounding box: SW 26.3°N 80.0°E  NE 30.5°N 88.2°E
+              southwest: const LatLng(26.3, 80.0),
+              northeast: const LatLng(30.5, 88.2),
             ),
-            MarkerLayer(
-              markers: [
-                Marker(
-                  point: userLatLng,
-                  width: 60,
-                  height: 60,
-                  child: _UserBeacon(),
-                ),
-                ...state.merchants.map((merchant) {
-                  final isSelected =
-                      state.selectedMerchant?['id'] == merchant['id'];
-                  return Marker(
-                    point: LatLng(
-                      merchant['latitude'] as double,
-                      merchant['longitude'] as double,
-                    ),
-                    width: isSelected ? 56 : 44,
-                    height: isSelected ? 72 : 58,
-                    child: GestureDetector(
-                      onTap: () {
-                        context
-                            .read<MapBloc>()
-                            .add(MapMerchantSelected(merchant));
-                        _mapController.move(
-                          LatLng(
-                            merchant['latitude'] as double,
-                            merchant['longitude'] as double,
-                          ),
-                          15.5,
-                        );
-                      },
-                      child: _MerchantPin(
-                        category: merchant['category'] as String,
-                        isSelected: isSelected,
-                        icon: _getCategoryIcon(merchant['category'] as String),
-                        color: _getCategoryColor(merchant['category'] as String),
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ],
+          ),
+          onMapCreated: (controller) {
+            _mapController = controller;
+          },
+          onStyleLoadedCallback: () {
+            final bloc = context.read<MapBloc>();
+            final s = bloc.state;
+            if (s is MapLoadedState) _onStyleLoaded(s);
+          },
+          onMapClick: (_, __) => _closeDrawer(),
         ),
+
+        // ── MARKERS OVERLAY ─────────────────────────────────────────────
+        ..._buildMarkerOverlays(state, userLatLng),
 
         // ── TOP HEADER ROW: Hamburger | Search | Close ───────────────────
         Positioned(
@@ -514,6 +559,35 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
           ),
         ),
 
+        // ── Autocomplete search dropdown ─────────────────────────────────
+        Positioned(
+          top: 110,
+          left: 16,
+          right: 16,
+          child: MapSearchOverlay(
+            merchants: state.merchants,
+            controller: _searchController,
+            onQueryChanged: (q) {
+              context.read<MapBloc>().add(MapQueryChanged(q));
+              setState(() {});
+            },
+            onMerchantSelected: (merchant) {
+              final lat = merchant['lat'] as double?;
+              final lng = merchant['lng'] as double?;
+              if (lat != null && lng != null && _mapController != null) {
+                _mapController!.animateCamera(
+                  CameraUpdate.newLatLngZoom(LatLng(lat, lng), 15.0),
+                );
+              }
+              setState(() { _isDrawerOpen = true; _drawerMerchant = merchant; });
+            },
+            onClear: () {
+              context.read<MapBloc>().add(const MapQueryChanged(''));
+              setState(() {});
+            },
+          ),
+        ),
+
         // ── Floating Action Buttons (Recenter / Zoom) ────────────────────
         Positioned(
           right: 16,
@@ -539,8 +613,13 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                     context
                         .read<MapBloc>()
                         .add(const MapRecenterRequested());
-                    if (state.userLocation != null) {
-                      _mapController.move(state.userLocation!, 15.0);
+                    if (state.userLocation != null && _mapController != null) {
+                      _mapController!.animateCamera(
+                        CameraUpdate.newLatLngZoom(
+                          LatLng(state.userLocation!.latitude, state.userLocation!.longitude),
+                          15.0,
+                        ),
+                      );
                     }
                   },
                   tooltip: 'Go to my location',
@@ -562,11 +641,12 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                         color: AppTheme.textPrimary,
                         size: 20,
                       ),
-                      onPressed: () {
-                        _mapController.move(
-                          _mapController.camera.center,
-                          _mapController.camera.zoom + 1,
-                        );
+                      onPressed: () async {
+                        if (_mapController != null) {
+                          _mapController!.animateCamera(
+                            CameraUpdate.zoomIn(),
+                          );
+                        }
                       },
                     ),
                     Divider(
@@ -580,11 +660,12 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                         color: AppTheme.textPrimary,
                         size: 20,
                       ),
-                      onPressed: () {
-                        _mapController.move(
-                          _mapController.camera.center,
-                          _mapController.camera.zoom - 1,
-                        );
+                      onPressed: () async {
+                        if (_mapController != null) {
+                          _mapController!.animateCamera(
+                            CameraUpdate.zoomOut(),
+                          );
+                        }
                       },
                     ),
                   ],
@@ -623,6 +704,13 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
               ),
             ),
           ),
+
+        // ── Offer Drawer (slide-in panel) ─────────────────────────────────
+        OfferMapDrawer(
+          merchant: _drawerMerchant,
+          isOpen: _isDrawerOpen,
+          onClose: _closeDrawer,
+        ),
 
         // ── Hamburger Side Menu Overlay ──────────────────────────────────
         if (_isMenuOpen) ...[
@@ -1007,96 +1095,6 @@ class _UserBeaconState extends State<_UserBeacon>
   }
 }
 
-// ── Merchant Map Pin ─────────────────────────────────────────────────────────
-class _MerchantPin extends StatelessWidget {
-  final String category;
-  final bool isSelected;
-  final IconData icon;
-  final Color color;
-
-  const _MerchantPin({
-    required this.category,
-    required this.isSelected,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutBack,
-          width: isSelected ? 48 : 36,
-          height: isSelected ? 48 : 36,
-          decoration: BoxDecoration(
-            color: isSelected ? color : Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: color,
-              width: isSelected ? 3 : 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: isSelected ? 0.5 : 0.2),
-                blurRadius: isSelected ? 16 : 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Icon(
-            icon,
-            color: isSelected ? Colors.white : color,
-            size: isSelected ? 24 : 18,
-          ),
-        ),
-        CustomPaint(
-          size: Size(isSelected ? 12 : 8, isSelected ? 8 : 6),
-          painter: _PinNeedle(
-            color: isSelected ? color : Colors.white,
-            borderColor: color,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PinNeedle extends CustomPainter {
-  final Color color;
-  final Color borderColor;
-  _PinNeedle({required this.color, required this.borderColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.fill;
-    final fillPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final borderPath = ui.Path()
-      ..moveTo(-1, 0)
-      ..lineTo(size.width / 2, size.height + 2)
-      ..lineTo(size.width + 1, 0)
-      ..close();
-    canvas.drawPath(borderPath, borderPaint);
-
-    final fillPath = ui.Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width / 2, size.height)
-      ..lineTo(size.width, 0)
-      ..close();
-    canvas.drawPath(fillPath, fillPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _PinNeedle old) =>
-      old.color != color || old.borderColor != borderColor;
-}
 
 // ── Merchant Bottom Card ─────────────────────────────────────────────────────
 class _MerchantBottomCard extends StatelessWidget {
@@ -1266,13 +1264,16 @@ class _MerchantBottomCard extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => OfferDetailPage(
-                    offer: {
-                      'hotelName': merchant['hotelName'],
-                      'location': merchant['location'],
-                      'distanceFromUser': merchant['distanceFromUser'],
-                      'highlightTag': merchant['highlightTag'],
-                      'image': merchant['image'],
-                    },
+                    offer: OfferEntity(
+                      title: 'BOGOF Offer',
+                      description: 'Buy 1 Get 1 Free on selected items.',
+                      terms: 'Valid for dine-in only. Cannot be combined with other offers.',
+                      category: OfferCategory.fromString(merchant['category'] as String? ?? 'DINING'),
+                      merchantName: merchant['hotelName'] as String?,
+                      imageUrl: merchant['image'] as String?,
+                      estimatedSavingsNpr: 500,
+                      maxPerUser: 3,
+                    ),
                   ),
                 ),
               );

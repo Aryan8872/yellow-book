@@ -173,12 +173,15 @@ class _SearchViewState extends State<_SearchView> {
     ),
   ];
 
-  void _navigateToResults(String query) {
-    if (query.trim().isEmpty) return;
+  void _navigateToResults(String query, {String? category}) {
+    if (query.trim().isEmpty && category == null) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SearchResultsPage(query: query),
+        builder: (_) => SearchResultsPage(
+          query: query,
+          initialCategory: category,
+        ),
       ),
     );
   }
@@ -296,7 +299,7 @@ class _SearchViewState extends State<_SearchView> {
                 itemBuilder: (context, index) {
                   final category = _categories[index];
                   return GestureDetector(
-                    onTap: () => _navigateToResults(category),
+                    onTap: () => _navigateToResults('', category: category),
                     child: Container(
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),

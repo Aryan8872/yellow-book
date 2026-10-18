@@ -41,6 +41,9 @@ dependencies:
   freezed_annotation: ^2.4.1
   json_annotation: ^4.9.0
 
+  # QR code rendering
+  qr_flutter: ^4.1.0
+
   # local db etc
   floor: ^1.4.2
   sqflite: ^2.3.0
@@ -52,8 +55,7 @@ dependencies:
   google_fonts: ^6.2.1
 
   # Real map + GPS
-  flutter_map: ^7.0.2
-  latlong2: ^0.9.1
+  maplibre_gl: ^0.27.1
   geolocator: ^13.0.2
 
   # In-App Auto Updater
@@ -65,6 +67,16 @@ dependencies:
 
   # Firebase Core
   firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.6
+  flutter_local_notifications: ^18.0.1
+
+  # Deep-link handling for payment gateway callback
+  app_links: ^6.3.3
+
+  # WebView for Khalti/eSewa payment gateway
+  webview_flutter: ^4.10.0
+
+  flutter_secure_storage: ^10.3.4
 
 dev_dependencies:
   flutter_test:

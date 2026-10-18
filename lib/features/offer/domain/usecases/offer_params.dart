@@ -8,19 +8,29 @@ class GetOfferByIdParams {
 class GetPaginatedOffersParams {
   final int page;
   final int limit;
+  final String? q;
   final String? category;
+  final double? lat;
+  final double? lng;
+  final double? radiusKm;
   final String? merchantId;
-  final String? search;
   final bool? isFeatured;
+  final String? sortBy; // 'trending', 'popular', 'rating', 'savings', 'newest'
+  final String? location; // location/city filter for the backend
   final Map<String, dynamic>? additionalQuery;
 
   const GetPaginatedOffersParams({
     this.page = 1,
-    this.limit = 10,
+    this.limit = 20,
+    this.q,
     this.category,
+    this.lat,
+    this.lng,
+    this.radiusKm,
     this.merchantId,
-    this.search,
     this.isFeatured,
+    this.sortBy,
+    this.location,
     this.additionalQuery,
   });
 
@@ -29,10 +39,15 @@ class GetPaginatedOffersParams {
       'page': page,
       'limit': limit,
     };
-    if (category != null && category!.isNotEmpty) query['category'] = category;
+    if (q != null && q!.trim().isNotEmpty) query['q'] = q!.trim();
+    if (category != null && category!.trim().isNotEmpty) query['category'] = category!.trim();
+    if (lat != null) query['lat'] = lat;
+    if (lng != null) query['lng'] = lng;
+    if (radiusKm != null) query['radiusKm'] = radiusKm;
     if (merchantId != null && merchantId!.isNotEmpty) query['merchantId'] = merchantId;
-    if (search != null && search!.isNotEmpty) query['search'] = search;
     if (isFeatured != null) query['isFeatured'] = isFeatured;
+    if (sortBy != null && sortBy!.trim().isNotEmpty) query['sortBy'] = sortBy!.trim();
+    if (location != null && location!.trim().isNotEmpty) query['location'] = location!.trim();
     if (additionalQuery != null) query.addAll(additionalQuery!);
     return query;
   }

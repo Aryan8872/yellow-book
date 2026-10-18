@@ -1,21 +1,30 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
 import 'home_event.dart';
 import 'home_state.dart';
+import '../../domain/usecases/get_home_feed_usecase.dart';
+import '../../../../core/usecase/usecase.dart';
 
+@injectable
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
-  HomeBloc() : super(const HomeInitial()) {
+  final GetHomeFeedUseCase getHomeFeedUseCase;
+
+  HomeBloc(this.getHomeFeedUseCase) : super(const HomeInitial()) {
     on<HomeStarted>(_onHomeStarted);
-    on<TrendingOfferSelected>(_onTrendingOfferSelected);
+    on<OfferCardSelected>(_onOfferCardSelected);
     on<CategorySelected>(_onCategorySelected);
   }
 
   Future<void> _onHomeStarted(HomeStarted event, Emitter<HomeState> emit) async {
     emit(const HomeLoading());
-    await Future.delayed(const Duration(milliseconds: 300));
-    emit(const HomeLoaded());
+    final result = await getHomeFeedUseCase(NoParams());
+    result.fold(
+      (failure) => emit(HomeError(failure.message)),
+      (feedData) => emit(HomeLoaded(feedData: feedData)),
+    );
   }
 
-  Future<void> _onTrendingOfferSelected(TrendingOfferSelected event, Emitter<HomeState> emit) async {
+  Future<void> _onOfferCardSelected(OfferCardSelected event, Emitter<HomeState> emit) async {
     emit(NavigateToOfferDetail(event.offer));
   }
 

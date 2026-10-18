@@ -1,18 +1,32 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/features/home/presentation/bloc/home_bloc.dart';
 import 'package:entertainer/features/home/presentation/bloc/home_event.dart';
+import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
+
+// ─── Fallback images by category so cards never show broken icons ──────────────
+const _categoryFallbacks = {
+  'DINING':        'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=300&q=80',
+  'WELLNESS':      'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=300&q=80',
+  'ENTERTAINMENT': 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=300&q=80',
+  'RETAIL':        'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=300&q=80',
+  'TRAVEL':        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=300&q=80',
+  'BEAUTY':        'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=300&q=80',
+};
 
 class FeaturedOffersSlider extends StatelessWidget {
-  final List<Map<String, String>> offers;
+  final List<OfferEntity> offers;
 
   const FeaturedOffersSlider({super.key, required this.offers});
 
   @override
   Widget build(BuildContext context) {
-    final List<List<Map<String, String>>> slides = [];
+    if (offers.isEmpty) return const SizedBox.shrink();
+
+    final List<List<OfferEntity>> slides = [];
     for (int i = 0; i < offers.length; i += 4) {
       slides.add(offers.sublist(i, i + 4 > offers.length ? offers.length : i + 4));
     }
@@ -20,11 +34,11 @@ class FeaturedOffersSlider extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Text(
-            "Featured Collections",
-            style: TextStyle(
+            'Featured Collections',
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: AppTheme.textPrimary,
@@ -84,7 +98,20 @@ class FeaturedOffersSlider extends StatelessWidget {
     );
   }
 
-  Widget _buildFeaturedCard(BuildContext context, Map<String, String> item) {
+  Widget _buildFeaturedCard(BuildContext context, OfferEntity offer) {
+    final imageUrl = offer.imageUrl ??
+        (offer.images.isNotEmpty ? offer.images.first : null) ??
+        _categoryFallbacks[offer.category.name.toUpperCase()] ??
+        _categoryFallbacks['DINING']!;
+
+    final location = offer.merchant?.branches.isNotEmpty == true
+        ? '${offer.merchant!.branches.first.city}'
+        : (offer.merchantName ?? 'Nepal');
+
+    final tag = offer.discountPercentage != null && offer.discountPercentage! > 0
+        ? '${offer.discountPercentage}% OFF'
+        : 'BOGOF';
+
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.cardSurface,
@@ -97,7 +124,7 @@ class FeaturedOffersSlider extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
-            context.read<HomeBloc>().add(TrendingOfferSelected(item));
+            context.read<HomeBloc>().add(OfferCardSelected(offer));
           },
           child: Padding(
             padding: const EdgeInsets.all(8),
@@ -106,7 +133,7 @@ class FeaturedOffersSlider extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
                   child: CachedNetworkImage(
-                    imageUrl: item["image"]!,
+                    imageUrl: imageUrl,
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
@@ -129,7 +156,7 @@ class FeaturedOffersSlider extends StatelessWidget {
                       width: 60,
                       height: 60,
                       color: AppTheme.surfaceSubtle,
-                      child: const Icon(Icons.restaurant, color: AppTheme.textMuted, size: 22),
+                      child: const Icon(Icons.local_offer_rounded, color: AppTheme.textMuted, size: 22),
                     ),
                   ),
                 ),
@@ -140,8 +167,8 @@ class FeaturedOffersSlider extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        item["hotelName"]!,
-                        style: const TextStyle(
+                        offer.merchantName ?? offer.merchant?.name ?? offer.title,
+                        style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
                           color: AppTheme.textPrimary,
@@ -152,8 +179,8 @@ class FeaturedOffersSlider extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        item["location"]!,
-                        style: const TextStyle(
+                        location,
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           color: AppTheme.textSecondary,
                           fontWeight: FontWeight.w500,
@@ -169,8 +196,8 @@ class FeaturedOffersSlider extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          item["highlightTag"] ?? 'Deal',
-                          style: const TextStyle(
+                          tag,
+                          style: GoogleFonts.plusJakartaSans(
                             color: AppTheme.textPrimary,
                             fontSize: 9.5,
                             fontWeight: FontWeight.w700,

@@ -1,18 +1,27 @@
-import 'package:entertainer/core/network/common_response.dart';
 import 'package:entertainer/features/offer/data/model/offer_model.dart';
 import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 
-class OfferResponse extends CommonResponse {
+// Standalone response DTOs for offer endpoints.
+// No inheritance from ApiResponse/CommonResponse — avoids the `overridden_fields`
+// lint that arises when subclasses redeclare `data` with a narrower type.
+
+class OfferResponse {
+  final bool success;
+  final int statusCode;
+  final String message;
+  final String? errorCode;
+  final DateTime timestamp;
+  final String correlationId;
   final OfferModel data;
 
   OfferResponse({
     required this.data,
-    required super.success,
-    required super.statusCode,
-    required super.message,
-    super.errorCode,
-    required super.timestamp,
-    required super.correlationId,
+    required this.success,
+    required this.statusCode,
+    required this.message,
+    this.errorCode,
+    required this.timestamp,
+    required this.correlationId,
   });
 
   factory OfferResponse.fromJson(Map<String, dynamic> json) {
@@ -36,7 +45,13 @@ class OfferResponse extends CommonResponse {
   OfferEntity toEntity() => data.toEntity();
 }
 
-class PaginatedOfferResponse extends CommonResponse {
+class PaginatedOfferResponse {
+  final bool success;
+  final int statusCode;
+  final String message;
+  final String? errorCode;
+  final DateTime timestamp;
+  final String correlationId;
   final List<OfferModel> offers;
   final int count;
   final int total;
@@ -49,12 +64,12 @@ class PaginatedOfferResponse extends CommonResponse {
     required this.total,
     required this.page,
     required this.limit,
-    required super.success,
-    required super.statusCode,
-    required super.message,
-    super.errorCode,
-    required super.timestamp,
-    required super.correlationId,
+    required this.success,
+    required this.statusCode,
+    required this.message,
+    this.errorCode,
+    required this.timestamp,
+    required this.correlationId,
   });
 
   factory PaginatedOfferResponse.fromJson(Map<String, dynamic> json) {
@@ -68,7 +83,7 @@ class PaginatedOfferResponse extends CommonResponse {
     final offerModels = list
         .whereType<Map<String, dynamic>>()
         .map((item) => OfferModel.fromJson(item))
-        .toList();   //converting each object inside the array or list to model instance and converting to a list
+        .toList(); // converting each object inside the array or list to model instance and converting to a list
 
     final metaMap = json['meta'] is Map<String, dynamic>
         ? json['meta'] as Map<String, dynamic>
@@ -76,7 +91,9 @@ class PaginatedOfferResponse extends CommonResponse {
 
     final total = (metaMap['total'] as num?)?.toInt() ?? offerModels.length;
     final count = (metaMap['count'] as num?)?.toInt() ?? offerModels.length;
-    final page = (metaMap['page'] as num?)?.toInt() ?? (metaMap['pageNumber'] as num?)?.toInt() ?? 1;
+    final page = (metaMap['page'] as num?)?.toInt() ??
+        (metaMap['pageNumber'] as num?)?.toInt() ??
+        1;
     final limit = (metaMap['limit'] as num?)?.toInt() ?? 10;
 
     return PaginatedOfferResponse(

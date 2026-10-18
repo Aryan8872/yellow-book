@@ -1,8 +1,13 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:entertainer/core/storage/token_storage.dart';
-import 'package:entertainer/features/auth/data/model/auth_response.dart';
+import '../../storage/token_storage.dart';
+import '../api_endpoints.dart';
+import '../base_urls.dart';
 
+/// Interceptor that handles:
+/// 1. Attaching `Bearer <access_token>` to outgoing requests (except public auth endpoints).
+/// 2. Concurrency-safe 401 handling: queues simultaneous requests while rotating the refresh token via POST /auth/refresh.
+/// 3. Retrying queued requests upon successful rotation, or clearing session and rejecting if refresh fails.
 class AuthInterceptor extends Interceptor {
   final TokenStorage storage;
   final String baseUrl;
@@ -17,9 +22,11 @@ class AuthInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final path = options.path;
-    final isAuthEndpoint = path.contains('/auth/login') ||
-        path.contains('/auth/register') ||
-        path.contains('/auth/refresh');
+    final isAuthEndpoint = path.contains(ApiEndpoints.login) ||
+        path.contains(ApiEndpoints.register) ||
+        path.contains(ApiEndpoints.refresh) ||
+        path.contains(ApiEndpoints.forgotPassword) ||
+        path.contains(ApiEndpoints.resetPassword);
 
     if (!isAuthEndpoint) {
       final token = storage.accessToken;
@@ -36,9 +43,11 @@ class AuthInterceptor extends Interceptor {
     final options = err.requestOptions;
     final path = options.path;
 
-    final isAuthEndpoint = path.contains('/auth/login') ||
-        path.contains('/auth/register') ||
-        path.contains('/auth/refresh');
+    final isAuthEndpoint = path.contains(ApiEndpoints.login) ||
+        path.contains(ApiEndpoints.register) ||
+        path.contains(ApiEndpoints.refresh) ||
+        path.contains(ApiEndpoints.forgotPassword) ||
+        path.contains(ApiEndpoints.resetPassword);
 
     if (status == 401 && !isAuthEndpoint && storage.refreshToken != null && storage.refreshToken!.isNotEmpty) {
       if (_isRefreshing) {
@@ -56,7 +65,7 @@ class AuthInterceptor extends Interceptor {
       try {
         final refreshDio = Dio(
           BaseOptions(
-            baseUrl: baseUrl,
+            baseUrl: baseUrl.isNotEmpty ? baseUrl : BaseUrls.current,
             connectTimeout: const Duration(seconds: 15),
             receiveTimeout: const Duration(seconds: 15),
             headers: {
@@ -67,21 +76,34 @@ class AuthInterceptor extends Interceptor {
         );
 
         final response = await refreshDio.post(
-          '/auth/refresh',
+          ApiEndpoints.refresh,
           data: {'refreshToken': storage.refreshToken},
         );
 
-        final authResponse = AuthResponse.fromJson(
-          Map<String, dynamic>.from(response.data as Map),
-        );
+        // NestJS returns:
+        // { success: true, statusCode: 200, data: { tokens: { accessToken, refreshToken, expiresIn } } }
+        // or directly { tokens: { ... } } inside data
+        final rawBody = response.data;
+        Map<String, dynamic> dataMap = {};
+        if (rawBody is Map<String, dynamic>) {
+          if (rawBody.containsKey('data') && rawBody['data'] is Map<String, dynamic>) {
+            dataMap = rawBody['data'] as Map<String, dynamic>;
+          } else {
+            dataMap = rawBody;
+          }
+        }
 
-        if (authResponse.accessToken.isNotEmpty) {
-          storage.save(
-            authResponse.accessToken,
-            authResponse.refreshToken.isNotEmpty ? authResponse.refreshToken : storage.refreshToken!,
-          );
+        final tokensMap = dataMap['tokens'] is Map<String, dynamic>
+            ? dataMap['tokens'] as Map<String, dynamic>
+            : dataMap;
 
-          final retryDio = Dio(BaseOptions(baseUrl: baseUrl));
+        final newAccessToken = tokensMap['accessToken']?.toString() ?? '';
+        final newRefreshToken = tokensMap['refreshToken']?.toString() ?? storage.refreshToken!;
+
+        if (newAccessToken.isNotEmpty) {
+          storage.save(newAccessToken, newRefreshToken);
+
+          final retryDio = Dio(BaseOptions(baseUrl: baseUrl.isNotEmpty ? baseUrl : BaseUrls.current));
           options.headers['Authorization'] = 'Bearer ${storage.accessToken}';
           final retryResponse = await retryDio.fetch(options);
           handler.resolve(retryResponse);

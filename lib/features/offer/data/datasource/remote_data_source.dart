@@ -8,6 +8,8 @@ abstract class RemoteDataSource {
   Future<OfferResponse> createOffer(CreateOfferParams params);
   Future<OfferResponse> updateOffer(UpdateOfferParams params);
   Future<bool> deleteOffer(DeleteOfferParams params);
+  Future<bool> trackOfferView(String offerId);
+  Future<bool> trackOfferRedemption(String offerId);
 }
 
 class RemoteDataSourceImpl implements RemoteDataSource {
@@ -65,6 +67,18 @@ class RemoteDataSourceImpl implements RemoteDataSource {
         ? '/offers/${params.merchantId}/${params.offerId}'
         : '/offers/${params.offerId}';
     await dio.delete(path);
+    return true;
+  }
+
+  @override
+  Future<bool> trackOfferView(String offerId) async {
+    await dio.post('/offers/$offerId/view');
+    return true;
+  }
+
+  @override
+  Future<bool> trackOfferRedemption(String offerId) async {
+    await dio.post('/offers/$offerId/redeem');
     return true;
   }
 }

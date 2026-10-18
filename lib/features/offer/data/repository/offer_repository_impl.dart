@@ -71,6 +71,30 @@ class OfferRepositoryImpl implements OfferRepository {
     }
   }
 
+  @override
+  Future<Either<Failure, bool>> trackOfferView(String offerId) async {
+    try {
+      final success = await remoteDataSource.trackOfferView(offerId);
+      return Right(success);
+    } on DioException catch (e) {
+      return Left(_handleDioError(e));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> trackOfferRedemption(String offerId) async {
+    try {
+      final success = await remoteDataSource.trackOfferRedemption(offerId);
+      return Right(success);
+    } on DioException catch (e) {
+      return Left(_handleDioError(e));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
   Failure _handleDioError(DioException e) {
     final serverMessage = e.response?.data is Map
         ? (e.response?.data['message'] ?? e.response?.data['error'])
