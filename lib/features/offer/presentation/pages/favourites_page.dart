@@ -7,6 +7,10 @@ import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/features/offer/presentation/bloc/favourites_bloc.dart';
 import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 import 'package:entertainer/features/offer/presentation/pages/offer_detail_page.dart';
+import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
+import 'package:entertainer/features/auth/domain/entities/user.dart';
+import 'package:entertainer/features/search/presentation/pages/search_page.dart';
 
 class FavouritesPage extends StatelessWidget {
   const FavouritesPage({super.key});
@@ -25,102 +29,119 @@ class _FavouritesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.canvasBg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: BlocBuilder<FavouritesBloc, FavouritesState>(
-                builder: (context, state) {
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Saved Offers',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 26, fontWeight: FontWeight.w900,
-                                color: AppTheme.textPrimary, letterSpacing: -0.5,
-                              ),
-                            ),
-                            Text(
-                              '${state.favourites.length} saved',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Count badge
-                      if (state.favourites.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD93025).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.favorite_rounded, color: Color(0xFFD93025), size: 14),
-                              const SizedBox(width: 5),
-                              Text(
-                                '${state.favourites.length}',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13, fontWeight: FontWeight.w800,
-                                  color: const Color(0xFFD93025),
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        final user = authState is AuthAuthenticated ? authState.user : null;
+
+        return Scaffold(
+          backgroundColor: AppTheme.canvasBg,
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header ────────────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: BlocBuilder<FavouritesBloc, FavouritesState>(
+                    builder: (context, state) {
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Saved Offers',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 26, fontWeight: FontWeight.w900,
+                                    color: AppTheme.textPrimary, letterSpacing: -0.5,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                Text(
+                                  '${state.favourites.length} saved',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Content ───────────────────────────────────────────────────
-            Expanded(
-              child: BlocBuilder<FavouritesBloc, FavouritesState>(
-                builder: (context, state) {
-                  if (state.isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.darkPill),
-                    );
-                  }
-
-                  if (state.favourites.isEmpty) {
-                    return _EmptyState();
-                  }
-
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-                    itemCount: state.favourites.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      return _FavouriteOfferCard(offer: state.favourites[index]);
+                          // Count badge
+                          if (state.favourites.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD93025).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.favorite_rounded, color: Color(0xFFD93025), size: 14),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '${state.favourites.length}',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13, fontWeight: FontWeight.w800,
+                                      color: const Color(0xFFD93025),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── Content ───────────────────────────────────────────────────
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      context.read<FavouritesBloc>().add(const FavouritesLoadRequested());
+                    },
+                    child: BlocBuilder<FavouritesBloc, FavouritesState>(
+                      builder: (context, state) {
+                        if (state.isLoading) {
+                          return const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.darkPill),
+                          );
+                        }
+
+                        if (state.favourites.isEmpty) {
+                          return ListView(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                            children: [_EmptyState(user: user)],
+                          );
+                        }
+
+                        return ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                          itemCount: state.favourites.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            return _FavouriteOfferCard(offer: state.favourites[index]);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
 class _EmptyState extends StatelessWidget {
+  final User? user;
+  const _EmptyState({this.user});
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -158,7 +179,9 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 28),
           ElevatedButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: user != null ? () => Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const SearchPage()),
+            ) : null,
             icon: const Icon(Icons.explore_rounded, size: 18),
             label: const Text('Browse Offers'),
             style: ElevatedButton.styleFrom(

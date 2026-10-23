@@ -53,6 +53,7 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
         radiusKm: event.radiusKm,
         location: _currentLocation,
         sortBy: _currentSortBy,
+        merchantId: event.merchantId,
       ),
     );
 

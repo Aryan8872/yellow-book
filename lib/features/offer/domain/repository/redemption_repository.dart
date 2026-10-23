@@ -9,5 +9,10 @@ abstract class RedemptionRepository {
   Future<Either<Failure, RedemptionEntity>> initRedemption(String offerId);
 
   /// Fetch the authenticated user's redemption history.
-  Future<Either<Failure, List<RedemptionEntity>>> getMyRedemptions();
+  /// Optionally filter by [offerId] to get redemptions for a specific offer.
+  Future<Either<Failure, List<RedemptionEntity>>> getMyRedemptions({String? offerId});
+
+  /// Cancel a redemption session by [sessionId].
+  /// Only allowed for INIT status sessions owned by the user.
+  Future<Either<Failure, void>> cancelRedemption(String sessionId);
 }

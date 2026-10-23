@@ -50,8 +50,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
         return Scaffold(
           backgroundColor: AppTheme.canvasBg,
-          body: CustomScrollView(
-            slivers: [
+          body: RefreshIndicator(
+            onRefresh: () async {
+              await _loadRedemptions();
+            },
+            child: CustomScrollView(
+              slivers: [
               // ── Profile Header SliverAppBar ────────────────────────────
               SliverAppBar(
                 expandedHeight: 220,
@@ -118,11 +122,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.edit_rounded, color: Colors.white70),
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const EditProfilePage()),
                       );
+                      // Refresh profile data when returning from edit page
+                      if (result == true && mounted) {
+                        context.read<AuthBloc>().add(const CheckAuthStatusRequested());
+                      }
                     },
                     tooltip: 'Edit profile',
                   ),
@@ -298,6 +306,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
           ),
+        ),
         );
       },
     );

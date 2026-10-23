@@ -16,11 +16,18 @@ import 'package:injectable/injectable.dart' as _i526;
 import '../../features/auth/data/datasources/remote/auth_remote_datasource.dart'
     as _i1022;
 import '../../features/auth/domain/repositories/auth_repository.dart' as _i787;
+import '../../features/auth/domain/usecases/forgot_password_usecase.dart'
+    as _i560;
 import '../../features/auth/domain/usecases/get_current_user_usecase.dart'
     as _i17;
+import '../../features/auth/domain/usecases/google_auth_usecase.dart' as _i372;
 import '../../features/auth/domain/usecases/login_usecase.dart' as _i188;
 import '../../features/auth/domain/usecases/logout_usecase.dart' as _i48;
 import '../../features/auth/domain/usecases/register_usecase.dart' as _i941;
+import '../../features/auth/domain/usecases/reset_password_usecase.dart'
+    as _i474;
+import '../../features/auth/domain/usecases/update_profile_usecase.dart'
+    as _i798;
 import '../../features/auth/presentation/bloc/auth_bloc.dart' as _i797;
 import '../../features/home/data/datasources/category_remote_datasource.dart'
     as _i222;
@@ -31,6 +38,8 @@ import '../../features/home/domain/usecases/get_home_feed_usecase.dart'
     as _i1054;
 import '../../features/home/presentation/bloc/home_bloc.dart' as _i202;
 import '../../features/map/presentation/bloc/map_bloc.dart' as _i437;
+import '../../features/offer/data/datasource/branch_remote_datasource.dart'
+    as _i406;
 import '../../features/offer/data/datasource/favourites_remote_datasource.dart'
     as _i750;
 import '../../features/offer/data/datasource/redemption_remote_datasource.dart'
@@ -60,6 +69,8 @@ extension GetItInjectableX on _i174.GetIt {
       environmentFilter,
     );
     final dependencyInjection = _$DependencyInjection();
+    gh.factory<_i406.BranchRemoteDataSource>(
+        () => _i406.BranchRemoteDataSource());
     gh.lazySingleton<_i973.TokenStorage>(
         () => dependencyInjection.tokenStorage);
     gh.lazySingleton<_i361.Dio>(
@@ -97,12 +108,20 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i1022.AuthRemoteDatasource>(),
               gh<_i973.TokenStorage>(),
             ));
+    gh.factory<_i560.ForgotPasswordUsecase>(
+        () => _i560.ForgotPasswordUsecase(gh<_i787.AuthRepository>()));
     gh.factory<_i17.GetCurrentUserUsecase>(
         () => _i17.GetCurrentUserUsecase(gh<_i787.AuthRepository>()));
+    gh.factory<_i372.GoogleAuthUsecase>(
+        () => _i372.GoogleAuthUsecase(gh<_i787.AuthRepository>()));
     gh.factory<_i48.LogoutUsecase>(
         () => _i48.LogoutUsecase(gh<_i787.AuthRepository>()));
     gh.factory<_i941.RegisterUsecase>(
         () => _i941.RegisterUsecase(gh<_i787.AuthRepository>()));
+    gh.factory<_i474.ResetPasswordUsecase>(
+        () => _i474.ResetPasswordUsecase(gh<_i787.AuthRepository>()));
+    gh.factory<_i798.UpdateProfileUsecase>(
+        () => _i798.UpdateProfileUsecase(gh<_i787.AuthRepository>()));
     gh.factory<_i1059.FavouritesBloc>(
         () => _i1059.FavouritesBloc(gh<_i750.FavouritesRemoteDataSource>()));
     gh.lazySingleton<_i795.RedemptionRepository>(() => dependencyInjection
@@ -123,12 +142,6 @@ extension GetItInjectableX on _i174.GetIt {
         ));
     gh.factory<_i188.LoginUsecase>(
         () => _i188.LoginUsecase(gh<_i787.AuthRepository>()));
-    gh.factory<_i797.AuthBloc>(() => _i797.AuthBloc(
-          gh<_i188.LoginUsecase>(),
-          gh<_i941.RegisterUsecase>(),
-          gh<_i17.GetCurrentUserUsecase>(),
-          gh<_i48.LogoutUsecase>(),
-        ));
     gh.factory<_i202.HomeBloc>(
         () => _i202.HomeBloc(gh<_i1054.GetHomeFeedUseCase>()));
     gh.factory<_i437.MapBloc>(
@@ -137,9 +150,22 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i405.InitRedemptionUsecase(gh<_i795.RedemptionRepository>()));
     gh.factory<_i405.GetMyRedemptionsUsecase>(
         () => _i405.GetMyRedemptionsUsecase(gh<_i795.RedemptionRepository>()));
+    gh.factory<_i405.CancelRedemptionUsecase>(
+        () => _i405.CancelRedemptionUsecase(gh<_i795.RedemptionRepository>()));
+    gh.factory<_i797.AuthBloc>(() => _i797.AuthBloc(
+          gh<_i188.LoginUsecase>(),
+          gh<_i941.RegisterUsecase>(),
+          gh<_i17.GetCurrentUserUsecase>(),
+          gh<_i48.LogoutUsecase>(),
+          gh<_i798.UpdateProfileUsecase>(),
+          gh<_i372.GoogleAuthUsecase>(),
+          gh<_i560.ForgotPasswordUsecase>(),
+          gh<_i474.ResetPasswordUsecase>(),
+        ));
     gh.factory<_i790.RedemptionBloc>(() => _i790.RedemptionBloc(
           gh<_i405.InitRedemptionUsecase>(),
           gh<_i405.GetMyRedemptionsUsecase>(),
+          gh<_i405.CancelRedemptionUsecase>(),
         ));
     return this;
   }

@@ -23,6 +23,11 @@ final class RedemptionError extends RedemptionState {
   const RedemptionError(this.message);
 }
 
+/// Redemption cancelled successfully
+final class RedemptionCancelSuccess extends RedemptionState {
+  const RedemptionCancelSuccess();
+}
+
 /// History loaded state
 final class RedemptionHistoryLoaded extends RedemptionState {
   final List<RedemptionEntity> redemptions;

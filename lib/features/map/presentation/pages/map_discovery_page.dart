@@ -15,20 +15,35 @@ import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 import 'package:entertainer/features/offer/presentation/pages/offer_detail_page.dart';
 
 class MapDiscoveryPage extends StatelessWidget {
-  const MapDiscoveryPage({super.key});
+  final ({double lat, double lng, String? title})? initialBranch;
+
+  const MapDiscoveryPage({super.key, this.initialBranch});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<MapBloc>()..add(const MapInitialLoadRequested()),
-      child: const _MapDiscoveryView(),
+      create: (context) {
+        final bloc = getIt<MapBloc>();
+        bloc.add(const MapInitialLoadRequested());
+        if (initialBranch != null) {
+          bloc.add(MapFocusBranchRequested(
+            lat: initialBranch!.lat,
+            lng: initialBranch!.lng,
+            title: initialBranch!.title,
+          ));
+        }
+        return bloc;
+      },
+      child: _MapDiscoveryView(initialBranch: initialBranch),
     );
   }
 }
 
 
 class _MapDiscoveryView extends StatefulWidget {
-  const _MapDiscoveryView();
+  final ({double lat, double lng, String? title})? initialBranch;
+
+  const _MapDiscoveryView({this.initialBranch});
 
   @override
   State<_MapDiscoveryView> createState() => _MapDiscoveryViewState();
@@ -108,6 +123,11 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
       parent: _menuAnimController,
       curve: Curves.easeOut,
     );
+    _logMapInitialization();
+  }
+
+  void _logMapInitialization() {
+    // Map initialization logged for debugging
   }
 
   @override
@@ -160,6 +180,8 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
     final imageBytes = await _loadAssetBytes('assets/images/map_pin.png');
     if (imageBytes != null) {
       await _mapController!.addImage('map_pin', imageBytes);
+    } else {
+      // Failed to load map pin asset
     }
     _addMarkers(state);
     // Symbol tap handler
@@ -351,10 +373,72 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
     );
   }
 
+  Widget _buildMapKeyError(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.canvasBg,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.map_outlined,
+                size: 64,
+                color: AppTheme.textMuted,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Map Service Unavailable',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'The map style key is not configured. Please build with the GEOAPIFY_MAP_KEY dart-define.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Build command: flutter build apk --debug --dart-define=GEOAPIFY_MAP_KEY=<your_key>',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMapScreen(BuildContext context, MapLoadedState state) {
-    final userLatLng = state.userLocation != null
-        ? LatLng(state.userLocation!.latitude, state.userLocation!.longitude)
-        : const LatLng(MapConfig.defaultLatitude, MapConfig.defaultLongitude);
+    // Use initialBranch coordinates if provided, otherwise user location or default
+    LatLng targetLatLng;
+    double initialZoom = 14.0;
+    
+    if (widget.initialBranch != null) {
+      targetLatLng = LatLng(widget.initialBranch!.lat, widget.initialBranch!.lng);
+      initialZoom = 16.0; // Branch focus zoom level
+    } else {
+      targetLatLng = state.userLocation != null
+          ? LatLng(state.userLocation!.latitude, state.userLocation!.longitude)
+          : const LatLng(MapConfig.defaultLatitude, MapConfig.defaultLongitude);
+    }
+
+    // Check if map key is available
+    if (!MapConfig.hasMapKey || MapConfig.styleUrl.isEmpty) {
+      return _buildMapKeyError(context);
+    }
 
     return Stack(
       fit: StackFit.expand,
@@ -362,8 +446,8 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
         // ── MAP ──────────────────────────────────────────────────────────
         MapLibreMap(
           initialCameraPosition: CameraPosition(
-            target: userLatLng,
-            zoom: 14.0,
+            target: targetLatLng,
+            zoom: initialZoom,
           ),
           styleString: MapConfig.styleUrl,
           minMaxZoomPreference: const MinMaxZoomPreference(3.0, 19.0),
@@ -374,6 +458,7 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
               northeast: const LatLng(30.5, 88.2),
             ),
           ),
+          myLocationEnabled: true,
           onMapCreated: (controller) {
             _mapController = controller;
           },
@@ -386,7 +471,7 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
         ),
 
         // ── MARKERS OVERLAY ─────────────────────────────────────────────
-        ..._buildMarkerOverlays(state, userLatLng),
+        ..._buildMarkerOverlays(state, targetLatLng),
 
         // ── TOP HEADER ROW: Hamburger | Search | Close ───────────────────
         Positioned(
@@ -581,10 +666,19 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
               }
               setState(() { _isDrawerOpen = true; _drawerMerchant = merchant; });
             },
+            onPlaceSelected: (place) {
+              if (_mapController != null) {
+                _mapController!.animateCamera(
+                  CameraUpdate.newLatLngZoom(LatLng(place.lat, place.lon), 15.0),
+                );
+              }
+            },
             onClear: () {
               context.read<MapBloc>().add(const MapQueryChanged(''));
               setState(() {});
             },
+            currentLat: _mapController?.cameraPosition?.target.latitude,
+            currentLng: _mapController?.cameraPosition?.target.longitude,
           ),
         ),
 
@@ -610,13 +704,18 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                     size: 20,
                   ),
                   onPressed: () async {
-                    context
-                        .read<MapBloc>()
-                        .add(const MapRecenterRequested());
-                    if (state.userLocation != null && _mapController != null) {
+                    // Request location refresh from bloc first
+                    if (!mounted) return;
+                    context.read<MapBloc>().add(const MapRecenterRequested());
+                    
+                    // Wait for state update then animate camera
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    if (!mounted) return;
+                    final blocState = context.read<MapBloc>().state;
+                    if (blocState is MapLoadedState && blocState.userLocation != null && _mapController != null) {
                       _mapController!.animateCamera(
                         CameraUpdate.newLatLngZoom(
-                          LatLng(state.userLocation!.latitude, state.userLocation!.longitude),
+                          LatLng(blocState.userLocation!.latitude, blocState.userLocation!.longitude),
                           15.0,
                         ),
                       );

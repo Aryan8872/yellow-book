@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/core/di/service_loader.dart';
+import 'package:entertainer/core/widgets/offline_banner.dart';
 import 'package:entertainer/features/auth/domain/entities/user.dart';
-import 'package:entertainer/core/services/app_update_service.dart';
-import 'package:entertainer/core/services/update_available_dialog.dart';
 import 'package:entertainer/features/home/presentation/pages/home_page.dart';
 import 'package:entertainer/features/search/presentation/pages/search_page.dart';
 import 'package:entertainer/features/profile/presentation/pages/profile_page.dart';
@@ -43,23 +43,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _pages = [
       HomePage(user: widget.user),
       const SearchPage(),
-      BlocProvider(
-        create: (_) => getIt<FavouritesBloc>()..add(const FavouritesLoadRequested()),
-        child: const FavouritesPage(),
-      ),
+      const FavouritesPage(),
       const ProfilePage(),
     ];
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAppUpdate();
-    });
-  }
-
-  Future<void> _checkAppUpdate() async {
-    final updateInfo = await AppUpdateService.checkForUpdate();
-    if (updateInfo != null && mounted) {
-      UpdateAvailableDialog.show(context, updateInfo);
-    }
   }
 
   @override
@@ -67,11 +53,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return Scaffold(
       extendBody: true,
       backgroundColor: AppTheme.canvasBg,
-      body: RepaintBoundary(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: _pages,
-        ),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(
+            child: RepaintBoundary(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _pages,
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(

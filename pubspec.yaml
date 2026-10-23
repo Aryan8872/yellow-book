@@ -81,6 +81,9 @@ dependencies:
 
   flutter_secure_storage: ^10.3.4
 
+  # Pull-to-refresh
+  pull_to_refresh: ^2.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

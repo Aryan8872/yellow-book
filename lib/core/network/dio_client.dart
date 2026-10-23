@@ -9,6 +9,7 @@ class DioClient {
   final TokenStorage storage;
   final AuthRemoteDatasource authRemote;
   final String baseUrl;
+  static const String _apiVersion = 'v1';
   bool _isRefreshing = false;
 
   // queue of pending requests (each holds the original RequestOptions and a completer)
@@ -23,6 +24,9 @@ class DioClient {
     dio.options.baseUrl = this.baseUrl;
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
+        // Add API version header
+        options.headers['X-API-Version'] = _apiVersion;
+        
         final access = storage.accessToken;
         if (access != null && access.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $access';
@@ -32,6 +36,24 @@ class DioClient {
       onError: (error, handler) async {
         final status = error.response?.statusCode;
         final opts = error.requestOptions;
+
+        // Handle rate limit (429) with exponential backoff retry
+        if (status == 429) {
+          final retryAfter = error.response?.headers['retry-after'];
+          final delayMs = retryAfter != null 
+              ? (int.tryParse(retryAfter.first) ?? 5) * 1000
+              : 5000; // Default 5 seconds
+
+          await Future.delayed(Duration(milliseconds: delayMs));
+          
+          // Retry the request once
+          try {
+            final resp = await dio.fetch(opts);
+            return handler.resolve(resp);
+          } catch (e) {
+            return handler.next(error);
+          }
+        }
 
         if (status == 401 && storage.refreshToken != null && storage.refreshToken!.isNotEmpty) {
           if (_isRefreshing) {

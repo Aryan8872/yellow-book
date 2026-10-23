@@ -10,7 +10,8 @@ final class MapLoadingState extends MapState {
 
 final class MapErrorState extends MapState {
   final String message;
-  const MapErrorState(this.message);
+  final String? details;
+  const MapErrorState(this.message, [this.details]);
 }
 
 final class MapLoadedState extends MapState {
@@ -33,14 +34,14 @@ final class MapLoadedState extends MapState {
     String? activeCategory,
     List<Map<String, dynamic>>? merchants,
     Map<String, dynamic>? selectedMerchant,
-    bool clearSelected = false,
+    bool? clearSelected,
     LatLng? userLocation,
   }) {
     return MapLoadedState(
       query: query ?? this.query,
       activeCategory: activeCategory ?? this.activeCategory,
       merchants: merchants ?? this.merchants,
-      selectedMerchant: clearSelected ? null : (selectedMerchant ?? this.selectedMerchant),
+      selectedMerchant: clearSelected == true ? null : (selectedMerchant ?? this.selectedMerchant),
       userLocation: userLocation ?? this.userLocation,
     );
   }

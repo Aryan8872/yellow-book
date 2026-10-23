@@ -51,6 +51,8 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapMerchantSelected>(_onMerchantSelected);
     on<MapCardDismissed>(_onCardDismissed);
     on<MapRecenterRequested>(_onRecenter);
+    on<MapFocusBranchRequested>(_onFocusBranch);
+    on<MapErrorOccurred>(_onErrorOccurred);
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -67,6 +69,8 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
+        // Permission denied - emit error state with user-facing copy
+        add(MapErrorOccurred('Location permission off', 'Enable location access in Settings to find offers near you.'));
         return defaultLocation;
       }
 
@@ -209,6 +213,32 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     }
   }
 
+  Future<void> _onFocusBranch(
+    MapFocusBranchRequested event,
+    Emitter<MapState> emit,
+  ) async {
+    // Create a merchant map shape for the branch focus
+    final branchMerchant = {
+      'hotelName': event.title ?? 'Branch Location',
+      'latitude': event.lat,
+      'longitude': event.lng,
+      'location': 'Branch',
+      'category': 'All',
+      'highlightTag': '',
+      'offerType': '',
+      'rating': '',
+      'distanceFromUser': '',
+      'image': '',
+    };
+    emit(MapLoadedState(
+      merchants: _allMerchants,
+      selectedMerchant: branchMerchant,
+      userLocation: LatLng(event.lat, event.lng),
+      query: '',
+      activeCategory: 'All',
+    ));
+  }
+
   void _onQueryChanged(MapQueryChanged event, Emitter<MapState> emit) {
     final current = state;
     if (current is! MapLoadedState) return;
@@ -245,6 +275,10 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     final current = state;
     if (current is! MapLoadedState) return;
     emit(current.copyWith(clearSelected: true));
+  }
+
+  void _onErrorOccurred(MapErrorOccurred event, Emitter<MapState> emit) {
+    emit(MapErrorState(event.message, event.details));
   }
 
   List<Map<String, dynamic>> _filter(String query, String category) {

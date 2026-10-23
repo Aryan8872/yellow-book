@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/core/layout/main_shell_screen.dart';
 import '../bloc/auth_bloc.dart';
@@ -10,6 +11,7 @@ import '../widgets/ambient_background.dart';
 import '../widgets/animated_auth_button.dart';
 import '../widgets/auth_segmented_control.dart';
 import '../widgets/custom_text_field.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   final bool initialIsRegister;
@@ -41,6 +43,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   String? _phoneError;
   String? _passwordError;
   String? _formGeneralError;
+
+  // Google Sign-In
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email'],
+  );
 
   // Staggered Animation Controller
   late AnimationController _animationController;
@@ -201,6 +208,32 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           ),
         );
       }
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        setState(() {
+          _formGeneralError = 'Failed to get Google ID token';
+        });
+        return;
+      }
+
+      final bloc = context.read<AuthBloc>();
+      bloc.add(GoogleLoginRequested(idToken: idToken));
+    } catch (e) {
+      setState(() {
+        _formGeneralError = 'Google sign-in failed: ${e.toString()}';
+      });
     }
   }
 
@@ -446,7 +479,12 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                         alignment: Alignment.centerRight,
                                         child: TextButton(
                                           onPressed: () {
-                                            // Forgot password handling
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => const ForgotPasswordPage(),
+                                              ),
+                                            );
                                           },
                                           child: Text(
                                             'Forgot Password?',
@@ -467,6 +505,47 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                       isLoading: isLoading,
                                       onPressed: _submitForm,
                                     ),
+
+                                    const SizedBox(height: 16),
+
+                                    // Google Sign-In Button (Login Mode Only)
+                                    if (_isLoginMode)
+                                      Container(
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: AppTheme.borderLight,
+                                            width: 1.2,
+                                          ),
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(16),
+                                            onTap: isLoading ? null : _handleGoogleSignIn,
+                                            child: const Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.g_mobiledata,
+                                                  size: 24,
+                                                  color: Color(0xFF4285F4),
+                                                ),
+                                                SizedBox(width: 12),
+                                                Text(
+                                                  'Sign in with Google',
+                                                  style: TextStyle(
+                                                    color: AppTheme.textPrimary,
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),

@@ -1,12 +1,20 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
-import 'package:entertainer/features/search/presentation/bloc/search_bloc.dart';
-import 'package:entertainer/features/home/presentation/widgets/user_favorites_section.dart';
-import 'package:entertainer/features/home/presentation/widgets/stores_near_you_slider.dart';
+import 'package:entertainer/core/widgets/category_pill_row.dart';
+import 'package:entertainer/core/widgets/skeleton_loader.dart';
 import 'package:entertainer/features/map/presentation/pages/map_discovery_page.dart';
-import 'search_results_page.dart';
+import 'package:entertainer/features/offer/data/datasource/branch_remote_datasource.dart';
+import 'package:entertainer/features/offer/data/datasource/places_remote_datasource.dart';
+import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
+import 'package:entertainer/features/search/presentation/pages/search_results_page.dart';
+import 'package:entertainer/features/search/presentation/bloc/search_bloc.dart';
+import 'package:entertainer/features/home/presentation/widgets/stores_near_you_slider.dart';
+import 'package:entertainer/features/home/presentation/widgets/user_favorites_section.dart';
+import 'package:entertainer/features/home/data/datasources/category_remote_datasource.dart';
 
 class SearchPage extends StatelessWidget {
   const SearchPage({super.key});
@@ -29,158 +37,166 @@ class _SearchView extends StatefulWidget {
 
 class _SearchViewState extends State<_SearchView> {
   final TextEditingController _searchController = TextEditingController();
+  final BranchRemoteDataSource _branchDataSource = getIt<BranchRemoteDataSource>();
+  final CategoryRemoteDataSource _categoryDataSource = getIt<CategoryRemoteDataSource>();
+  final PlacesRemoteDataSource _placesDataSource = PlacesRemoteDataSource();
 
-  final List<String> _categories = [
-    'Restaurants',
-    'Grocery',
-    'Drinks',
-    'Dining',
-    'Hotels',
-    'Activities',
-  ];
+  List<CategoryModel> _categories = [];
+  bool _categoriesLoading = true;
+  bool _categoriesError = false;
+  String? _selectedCategory;
 
-  final List<String> _recentSearches = [
-    'Burgers',
-    'Tribes',
-    'Pizza',
-    'Coffee',
-    'Thamel',
-  ];
+  List<NearbyPlace> _nearbyPlaces = [];
+  bool _nearbyPlacesLoading = true;
+  bool _nearbyPlacesError = false;
 
-  final List<String> _locationAreas = [
-    'Downtown',
-    'Durbar Marg',
-    'Thamel',
-    'Jhamsikhel',
-    'Bela Vista',
-    'Kathmandu Center',
-    'Lalitpur',
-  ];
+  List<String> _recentSearches = [];
+  final List<OfferEntity> _userFavorites = [];
+  List<StoreItem> _storesNearYou = [];
 
-  final List<FavoriteStoreItem> _userFavorites = const [
-    FavoriteStoreItem(
-      id: '1',
-      label: 'Usina Pasta\nHouse',
-      shortLogo: 'USINA',
-      bg: Color(0xFFF7D417),
-      fg: Color(0xFF222222),
-    ),
-    FavoriteStoreItem(
-      id: '2',
-      label: 'Quiero Café\n& Bistro',
-      shortLogo: 'Q',
-      bg: Color(0xFF1C1C1C),
-      fg: Colors.white,
-    ),
-    FavoriteStoreItem(
-      id: '3',
-      label: 'Saúde Organic\nJuices',
-      shortLogo: 'Saúde',
-      bg: Color(0xFF6B2068),
-      fg: Colors.white,
-    ),
-    FavoriteStoreItem(
-      id: '4',
-      label: 'Japesca\nSushi Bar',
-      shortLogo: 'Japesca',
-      bg: Color(0xFFF08A24),
-      fg: Colors.white,
-    ),
-    FavoriteStoreItem(
-      id: '5',
-      label: 'Oak Artisan\nBurritos',
-      shortLogo: 'Oak',
-      bg: Color(0xFFE8202A),
-      fg: Colors.white,
-    ),
-  ];
+  // Default Kathmandu coordinates (fallback)
+  final double _currentLat = 27.7172;
+  final double _currentLng = 85.3240;
 
-  final List<StoreItem> _storesNearYou = const [
-    StoreItem(
-      id: '1',
-      name: 'Galeto Mamma Mia - Bela Vista',
-      logoText: 'GALETO\nMAMMA MIA',
-      logoBg: Color(0xFF1E6B3A),
-      logoFg: Colors.white,
-      category: 'Italian',
-      distance: '0.5 km',
-      time: '30-40 min',
-      price: '\$13.50',
-      sponsored: true,
-    ),
-    StoreItem(
-      id: '2',
-      name: 'Canto do Sabor Kitchen & Grill',
-      logoText: 'CANTO\nSABOR',
-      logoBg: Color(0xFF111111),
-      logoFg: Colors.white,
-      category: 'Home Cooking',
-      distance: '1.1 km',
-      time: '40-50 min',
-      price: 'Free',
-      sponsored: true,
-      freeDelivery: true,
-      freeFrom: 'Free delivery on orders over \$25',
-    ),
-    StoreItem(
-      id: '3',
-      name: 'Jeronimo Burger & Fries',
-      logoText: 'JERONIMO',
-      logoBg: Color(0xFFF7C325),
-      logoFg: Color(0xFF222222),
-      category: 'Fast Food',
-      distance: '0.4 km',
-      time: '25-35 min',
-      price: '\$9.90',
-      verified: true,
-    ),
-    StoreItem(
-      id: '4',
-      name: 'Tribes Restaurant - Downtown',
-      logoText: 'TRIBES',
-      logoBg: Color(0xFF0053DB),
-      logoFg: Colors.white,
-      category: 'Dining',
-      distance: '1.2 km',
-      time: '20-30 min',
-      price: '\$15.00',
-      sponsored: true,
-    ),
-    StoreItem(
-      id: '5',
-      name: 'Green Bowl Healthy Salads',
-      logoText: 'GREEN',
-      logoBg: Color(0xFF10B981),
-      logoFg: Colors.white,
-      category: 'Healthy',
-      distance: '2.5 km',
-      time: '15-25 min',
-      price: '\$12.00',
-      freeDelivery: true,
-      freeFrom: 'Free Delivery',
-    ),
-    StoreItem(
-      id: '6',
-      name: 'Himalayan Java Coffee',
-      logoText: 'JAVA',
-      logoBg: Color(0xFF8B5CF6),
-      logoFg: Colors.white,
-      category: 'Coffee',
-      distance: '0.8 km',
-      time: '10-20 min',
-      price: '\$8.50',
-      verified: true,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+    _loadNearbyPlaces();
+    _loadStoresNearYou();
+    _loadRecentSearches();
+  }
 
-  void _navigateToResults(String query, {String? category}) {
-    if (query.trim().isEmpty && category == null) return;
+  Future<void> _loadCategories() async {
+    setState(() {
+      _categoriesLoading = true;
+      _categoriesError = false;
+    });
+
+    try {
+      final categories = await _categoryDataSource.getCategories();
+      if (mounted) {
+        setState(() {
+          _categories = categories;
+          _categoriesLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _categoriesLoading = false;
+          _categoriesError = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Couldn\'t load categories'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadNearbyPlaces() async {
+    setState(() {
+      _nearbyPlacesLoading = true;
+      _nearbyPlacesError = false;
+    });
+
+    try {
+      final places = await _placesDataSource.reverse(
+        lat: _currentLat,
+        lon: _currentLng,
+      );
+      if (mounted) {
+        setState(() {
+          _nearbyPlaces = places;
+          _nearbyPlacesLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _nearbyPlacesLoading = false;
+          _nearbyPlacesError = true;
+        });
+      }
+    }
+  }
+
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const double earthRadius = 6371; // km
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) *
+        math.sin(dLon / 2) * math.sin(dLon / 2);
+    final c = 2 * math.asin(math.sqrt(a));
+    return earthRadius * c;
+  }
+
+  double _toRadians(double degrees) {
+    return degrees * math.pi / 180;
+  }
+
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      _loadCategories(),
+      _loadNearbyPlaces(),
+      _loadStoresNearYou(),
+    ]);
+  }
+
+  Future<void> _loadRecentSearches() async {
+    // TODO: Load from local storage
+    setState(() {
+      _recentSearches = [];
+    });
+  }
+
+  Future<void> _loadStoresNearYou() async {
+    // Default Kathmandu coordinates
+    final branches = await _branchDataSource.getBranchesNear(
+      lat: 27.7172,
+      lng: 85.3240,
+      radiusKm: 10,
+      limit: 20,
+    );
+
+    if (mounted) {
+      setState(() {
+        _storesNearYou = branches.map((branch) {
+          final merchant = branch['merchant'] as Map<String, dynamic>?;
+          final distance = (branch['distance'] as num?)?.toStringAsFixed(1) ?? '0.0';
+          return StoreItem(
+            id: branch['id'] as String,
+            name: merchant?['name'] as String? ?? branch['name'] as String? ?? 'Unknown',
+            logoText: (merchant?['name'] as String? ?? 'Unknown').substring(0, 8).toUpperCase(),
+            logoBg: const Color(0xFF1E6B3A),
+            logoFg: Colors.white,
+            category: 'General',
+            distance: '$distance km',
+            time: 'Open now',
+            price: 'Offers available',
+          );
+        }).toList();
+      });
+    }
+  }
+
+  void _navigateToResults(String query, {String? category, double? lat, double? lng, String? placeLabel}) {
+    // Allow navigation if there's a query OR a category OR location params
+    if (query.trim().isEmpty && category == null && lat == null && placeLabel == null) return;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => SearchResultsPage(
           query: query,
           initialCategory: category,
+          lat: lat,
+          lng: lng,
+          radiusKm: 10,
+          placeLabel: placeLabel,
         ),
       ),
     );
@@ -197,10 +213,12 @@ class _SearchViewState extends State<_SearchView> {
     return Scaffold(
       backgroundColor: AppTheme.canvasBg,
       body: SafeArea(
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(top: 16, bottom: 100),
-          children: [
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: ListView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.only(top: 16, bottom: 100),
+            children: [
             // Search Input Row + Map Floating Button (Screenshot 3 Style)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -289,38 +307,15 @@ class _SearchViewState extends State<_SearchView> {
             const SizedBox(height: 18),
 
             // Horizontal Category Pills
-            SizedBox(
-              height: 40,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _categories.length,
-                itemBuilder: (context, index) {
-                  final category = _categories[index];
-                  return GestureDetector(
-                    onTap: () => _navigateToResults('', category: category),
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardSurface,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: AppTheme.softCardShadow,
-                      ),
-                      child: Text(
-                        category,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+            CategoryPillRow(
+              categories: _categories,
+              selectedCategory: _selectedCategory,
+              onSelected: (category) {
+                setState(() => _selectedCategory = category);
+                _navigateToResults(_searchController.text, category: category);
+              },
+              isLoading: _categoriesLoading,
+              hasError: _categoriesError,
             ),
 
             const SizedBox(height: 22),
@@ -399,11 +394,11 @@ class _SearchViewState extends State<_SearchView> {
               const SizedBox(height: 24),
             ],
 
-            // Location Areas
+            // Nearby Places (or Popular Places fallback)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                'Search By Location Area',
+                _nearbyPlacesError ? 'Popular places' : 'Nearby places',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -413,54 +408,97 @@ class _SearchViewState extends State<_SearchView> {
               ),
             ),
             const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _locationAreas.map((location) {
-                  return InkWell(
-                    onTap: () => _navigateToResults(location),
-                    borderRadius: BorderRadius.circular(18),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardSurface,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppTheme.pastelPeriwinkle.withValues(alpha: 0.35)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.pastelPeriwinkle.withValues(alpha: 0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+            if (_nearbyPlacesLoading)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: const [
+                    SkeletonLoader(height: 40),
+                    SizedBox(height: 8),
+                    SkeletonLoader(height: 40),
+                    SizedBox(height: 8),
+                    SkeletonLoader(height: 40),
+                  ],
+                ),
+              )
+            else if (_nearbyPlaces.isEmpty && !_nearbyPlacesError)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'No nearby places found. Try searching manually.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _nearbyPlaces.map((place) {
+                    final distance = _calculateDistance(
+                      _currentLat,
+                      _currentLng,
+                      place.lat,
+                      place.lon,
+                    );
+                    return InkWell(
+                      onTap: () => _navigateToResults(
+                        _searchController.text,
+                        lat: place.lat,
+                        lng: place.lon,
+                        placeLabel: place.name,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.location_on_outlined, size: 14, color: AppTheme.pastelPeriwinkle),
-                          const SizedBox(width: 5),
-                          Text(
-                            location,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.accentPeriwinkleDark,
+                      borderRadius: BorderRadius.circular(18),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.cardSurface,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppTheme.pastelPeriwinkle.withValues(alpha: 0.35)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.pastelPeriwinkle.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on_outlined, size: 14, color: AppTheme.pastelPeriwinkle),
+                            const SizedBox(width: 5),
+                            Text(
+                              '${place.name} · ${distance.toStringAsFixed(1)} km',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.accentPeriwinkleDark,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
+                ),
               ),
-            ),
 
             const SizedBox(height: 28),
 
             UserFavoritesSection(
-              favorites: _userFavorites,
+              favorites: _userFavorites.map((offer) => FavoriteStoreItem(
+                id: offer.id ?? '',
+                label: offer.title,
+                shortLogo: (offer.merchant?.name ?? 'Unknown').substring(0, 2).toUpperCase(),
+                bg: const Color(0xFF1E6B3A),
+                fg: Colors.white,
+              )).toList(),
               onFavoriteTap: (item) => _navigateToResults(item.label.replaceAll('\n', ' ')),
             ),
 
@@ -472,6 +510,7 @@ class _SearchViewState extends State<_SearchView> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

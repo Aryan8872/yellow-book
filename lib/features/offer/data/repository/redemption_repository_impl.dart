@@ -25,10 +25,23 @@ class RedemptionRepositoryImpl implements RedemptionRepository {
   }
 
   @override
-  Future<Either<Failure, List<RedemptionEntity>>> getMyRedemptions() async {
+  Future<Either<Failure, List<RedemptionEntity>>> getMyRedemptions(
+      {String? offerId}) async {
     try {
-      final dtos = await remote.getMyRedemptions();
+      final dtos = await remote.getMyRedemptions(offerId: offerId);
       return Right(dtos.map((d) => d.toEntity()).toList());
+    } on DioException catch (e) {
+      return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> cancelRedemption(String sessionId) async {
+    try {
+      await remote.cancelRedemption(sessionId);
+      return const Right(null);
     } on DioException catch (e) {
       return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
     } catch (e) {

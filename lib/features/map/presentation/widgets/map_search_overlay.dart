@@ -1,15 +1,23 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
+import 'package:entertainer/core/widgets/skeleton_loader.dart';
+import 'package:entertainer/features/offer/data/datasource/places_remote_datasource.dart';
 
 /// Autocomplete search dropdown for the map discovery page.
 /// Matches the web FloatingMapSearch glassmorphism dropdown design.
+/// Note: This widget now only renders the suggestions list.
+/// The search input TextField is in the page header (map_discovery_page.dart).
 class MapSearchOverlay extends StatefulWidget {
   final List<Map<String, dynamic>> merchants;
   final TextEditingController controller;
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<Map<String, dynamic>> onMerchantSelected;
+  final ValueChanged<PlaceSuggestion> onPlaceSelected;
   final VoidCallback onClear;
+  final double? currentLat;
+  final double? currentLng;
 
   const MapSearchOverlay({
     super.key,
@@ -17,7 +25,10 @@ class MapSearchOverlay extends StatefulWidget {
     required this.controller,
     required this.onQueryChanged,
     required this.onMerchantSelected,
+    required this.onPlaceSelected,
     required this.onClear,
+    this.currentLat,
+    this.currentLng,
   });
 
   @override
@@ -26,22 +37,61 @@ class MapSearchOverlay extends StatefulWidget {
 
 class _MapSearchOverlayState extends State<MapSearchOverlay> {
   bool _showSuggestions = false;
-  final FocusNode _focusNode = FocusNode();
+  Timer? _debounce;
+  final PlacesRemoteDataSource _placesDataSource = PlacesRemoteDataSource();
+  List<PlaceSuggestion> _placeSuggestions = [];
+  bool _placesLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() {
-      if (mounted) {
-        setState(() => _showSuggestions = _focusNode.hasFocus && widget.controller.text.trim().isNotEmpty);
-      }
-    });
+    widget.controller.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    _debounce?.cancel();
+    widget.controller.removeListener(_onSearchChanged);
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      final query = widget.controller.text.trim();
+      setState(() => _showSuggestions = query.isNotEmpty);
+      if (query.isNotEmpty) {
+        _performPlacesSearch(query);
+      } else {
+        _placeSuggestions = [];
+      }
+    });
+  }
+
+  Future<void> _performPlacesSearch(String query) async {
+    setState(() {
+      _placesLoading = true;
+    });
+
+    try {
+      final results = await _placesDataSource.searchPlaces(
+        query: query,
+        lat: widget.currentLat,
+        lon: widget.currentLng,
+      );
+      if (mounted) {
+        setState(() {
+          _placeSuggestions = results;
+          _placesLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _placesLoading = false;
+        });
+      }
+    }
   }
 
   List<Map<String, dynamic>> get _suggestions {
@@ -55,196 +105,200 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
     }).take(6).toList();
   }
 
-  void _onTextChanged(String value) {
-    widget.onQueryChanged(value);
-    if (mounted) setState(() => _showSuggestions = value.trim().isNotEmpty);
-  }
-
   void _onSelect(Map<String, dynamic> merchant) {
     widget.controller.text = merchant['hotelName'] as String? ?? '';
-    _focusNode.unfocus();
     setState(() => _showSuggestions = false);
     widget.onMerchantSelected(merchant);
   }
 
-  void _onClear() {
-    widget.controller.clear();
-    widget.onClear();
+  void _onPlaceSelected(PlaceSuggestion place) {
+    widget.controller.text = place.name;
     setState(() => _showSuggestions = false);
+    widget.onPlaceSelected(place);
   }
 
   @override
   Widget build(BuildContext context) {
     final suggestions = _suggestions;
+    final hasContent = _showSuggestions && (suggestions.isNotEmpty || _placeSuggestions.isNotEmpty || _placesLoading);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // ── Search Input ───────────────────────────────────────────────────
-        Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppTheme.cardSurface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppTheme.borderLight),
-            boxShadow: AppTheme.softCardShadow,
-          ),
-          child: Row(
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 14),
-                child: Icon(Icons.search_rounded, color: AppTheme.textSecondary, size: 20),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: widget.controller,
-                  focusNode: _focusNode,
-                  onChanged: _onTextChanged,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Search venues, areas, tags...',
-                    hintStyle: GoogleFonts.plusJakartaSans(
-                      color: AppTheme.textMuted, fontSize: 13, fontWeight: FontWeight.w500,
-                    ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+    if (!hasContent) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.softCardShadow,
+      ),
+      child: ListView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          // MATCHING VENUES group
+          if (suggestions.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Text(
+                'MATCHING VENUES (${suggestions.length})',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                  letterSpacing: 0.5,
                 ),
               ),
-              if (widget.controller.text.isNotEmpty)
-                GestureDetector(
-                  onTap: _onClear,
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: 14),
-                    child: Icon(Icons.close_rounded, size: 18, color: AppTheme.textSecondary),
-                  ),
-                ),
-            ],
-          ),
-        ),
-
-        // ── Autocomplete Dropdown ──────────────────────────────────────────
-        if (_showSuggestions && suggestions.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.cardSurface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderLight),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                ),
-              ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-                  child: Text(
-                    'MATCHING VENUES (${suggestions.length})',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10, fontWeight: FontWeight.w700,
-                      color: AppTheme.textMuted, letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-                const Divider(height: 1, color: Color(0x18000000)),
-                ...suggestions.map((m) => _SuggestionTile(
-                  merchant: m,
-                  onTap: () => _onSelect(m),
-                )),
-              ],
-            ),
-          ),
-        ],
-
-        if (_showSuggestions && widget.controller.text.trim().isNotEmpty && suggestions.isEmpty) ...[
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.cardSurface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderLight),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.search_off_rounded, color: AppTheme.textMuted, size: 18),
-                const SizedBox(width: 10),
-                Text(
-                  'No venues found',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _SuggestionTile extends StatelessWidget {
-  final Map<String, dynamic> merchant;
-  final VoidCallback onTap;
-
-  const _SuggestionTile({required this.merchant, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final name = merchant['hotelName'] as String? ?? '';
-    final location = merchant['location'] as String? ?? '';
-    final category = merchant['category'] as String? ?? '';
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                color: const Color(0xFFD93025).withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.place_rounded, color: Color(0xFFD93025), size: 16),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ...suggestions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final merchant = entry.value;
+              return Column(
                 children: [
-                  Text(
-                    name,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary,
+                  if (index > 0) const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
+                    dense: true,
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: merchant['image'] != null && merchant['image'].toString().isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                merchant['image'].toString(),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.store_rounded,
+                                  size: 20,
+                                  color: AppTheme.textMuted,
+                                ),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.store_rounded,
+                              size: 20,
+                              color: AppTheme.textMuted,
+                            ),
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    '$category · $location',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w500,
+                    title: Text(
+                      merchant['hotelName'] as String? ?? 'Unknown',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    subtitle: Text(
+                      merchant['location'] as String? ?? '',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    trailing: merchant['highlightTag'] != null &&
+                            merchant['highlightTag'].toString().isNotEmpty
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.savingsGreen.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.savingsGreen),
+                            ),
+                            child: Text(
+                              merchant['highlightTag'] as String? ?? '',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.savingsGreen,
+                              ),
+                            ),
+                          )
+                        : null,
+                    onTap: () => _onSelect(merchant),
                   ),
                 ],
+              );
+            }).toList(),
+          ],
+          // PLACES group
+          if (_placesLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                children: [
+                  SkeletonLoader(height: 48),
+                  SizedBox(height: 8),
+                  SkeletonLoader(height: 48),
+                  SizedBox(height: 8),
+                  SkeletonLoader(height: 48),
+                ],
+              ),
+            )
+          else if (_placeSuggestions.isNotEmpty) ...[
+            if (suggestions.isNotEmpty) const Divider(height: 1, indent: 16, endIndent: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Text(
+                'PLACES (${_placeSuggestions.length})',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
+            ..._placeSuggestions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final place = entry.value;
+              return Column(
+                children: [
+                  if (index > 0 || suggestions.isNotEmpty) const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
+                    dense: true,
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF667EEA).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.place_rounded,
+                        color: Color(0xFF667EEA),
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      place.name,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    subtitle: place.district != null && place.confidence < 0.5
+                        ? Text(
+                            place.district!,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: AppTheme.textMuted,
+                            ),
+                          )
+                        : null,
+                    onTap: () => _onPlaceSelected(place),
+                  ),
+                ],
+              );
+            }).toList(),
           ],
-        ),
+        ],
       ),
     );
   }

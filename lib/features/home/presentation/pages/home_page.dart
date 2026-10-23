@@ -4,20 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
+import 'package:entertainer/core/services/notification_inbox_service.dart';
+import 'package:entertainer/core/widgets/skeleton_loader.dart';
 import 'package:entertainer/core/widgets/section_gap_normal.dart';
-import 'package:entertainer/features/auth/domain/entities/user.dart';
-import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
-import 'package:entertainer/features/auth/presentation/pages/login_page.dart';
-import 'package:entertainer/features/home/presentation/bloc/home_bloc.dart';
-import 'package:entertainer/features/home/presentation/bloc/home_event.dart';
-import 'package:entertainer/features/home/presentation/bloc/home_state.dart';
-import 'package:entertainer/features/home/presentation/widgets/category_card.dart';
-// CategoryCardFromApi is exported from the same file
-import 'package:entertainer/features/home/presentation/widgets/user_reviews_slider.dart';
-import 'package:entertainer/features/home/presentation/widgets/location_selection_modal.dart';
-import 'package:entertainer/features/map/presentation/pages/map_discovery_page.dart';
-import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_bloc.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_event.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_state.dart';
@@ -25,7 +14,20 @@ import 'package:entertainer/features/offer/presentation/pages/offer_detail_page.
 import 'package:entertainer/features/offer/presentation/pages/category_offers_page.dart';
 import 'package:entertainer/features/offer/presentation/widgets/featured_offers_slider.dart';
 import 'package:entertainer/features/offer/presentation/widgets/trending_offers_card.dart';
-import 'package:entertainer/features/search/presentation/pages/search_results_page.dart';
+import 'package:entertainer/features/profile/presentation/pages/profile_page.dart';
+import 'package:entertainer/features/home/presentation/pages/notifications_page.dart';
+import 'package:entertainer/features/home/presentation/widgets/category_card.dart';
+import 'package:entertainer/features/home/presentation/widgets/user_reviews_slider.dart';
+import 'package:entertainer/features/home/presentation/widgets/location_selection_modal.dart';
+import 'package:entertainer/features/map/presentation/pages/map_discovery_page.dart';
+import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
+import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
+import 'package:entertainer/features/auth/presentation/pages/login_page.dart';
+import 'package:entertainer/features/home/presentation/bloc/home_bloc.dart';
+import 'package:entertainer/features/home/presentation/bloc/home_state.dart';
+import 'package:entertainer/features/home/presentation/bloc/home_event.dart';
+import 'package:entertainer/features/auth/domain/entities/user.dart';
 
 class HomePage extends StatelessWidget {
   final User user;
@@ -55,7 +57,7 @@ class HomePage extends StatelessWidget {
               if (authState is AuthInitial) {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  MaterialPageRoute(builder: (_) => LoginPage()),
                 );
               }
             },
@@ -98,11 +100,12 @@ class _HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<_HomeView>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _homeSearchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final NotificationInboxService _inboxService = NotificationInboxService();
 
   String _currentLocation = 'Thamel, Kathmandu';
   bool _showMapFab = false;
+  int _unreadCount = 0;
 
   late AnimationController _fabAnimController;
   late Animation<double> _fabScaleAnimation;
@@ -113,37 +116,30 @@ class _HomeViewState extends State<_HomeView>
 
     _fabAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 380),
+      duration: const Duration(milliseconds: 200),
+    );
+    _fabScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fabAnimController, curve: Curves.easeOut),
     );
 
-    _fabScaleAnimation = CurvedAnimation(
-      parent: _fabAnimController,
-      curve: Curves.elasticOut,
-      reverseCurve: Curves.easeInCubic,
-    );
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 100 && !_showMapFab) {
+        setState(() => _showMapFab = true);
+        _fabAnimController.forward();
+      } else if (_scrollController.offset <= 100 && _showMapFab) {
+        setState(() => _showMapFab = false);
+        _fabAnimController.reverse();
+      }
+    });
 
-    _scrollController.addListener(_onScroll);
+    _loadUnreadCount();
   }
 
-  void _onScroll() {
-    final offset = _scrollController.offset;
-    if (offset > 160 && !_showMapFab) {
-      setState(() => _showMapFab = true);
-      _fabAnimController.forward();
-    } else if (offset <= 160 && _showMapFab) {
-      setState(() => _showMapFab = false);
-      _fabAnimController.reverse();
+  Future<void> _loadUnreadCount() async {
+    final count = await _inboxService.unreadCount();
+    if (mounted) {
+      setState(() => _unreadCount = count);
     }
-  }
-
-  void _navigateToResults(String query) {
-    if (query.trim().isEmpty) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SearchResultsPage(query: query),
-      ),
-    );
   }
 
   Future<void> _openLocationSelector() async {
@@ -163,7 +159,6 @@ class _HomeViewState extends State<_HomeView>
 
   @override
   void dispose() {
-    _homeSearchController.dispose();
     _scrollController.dispose();
     _fabAnimController.dispose();
     super.dispose();
@@ -177,12 +172,22 @@ class _HomeViewState extends State<_HomeView>
       backgroundColor: AppTheme.canvasBg,
       body: Stack(
         children: [
-          CustomScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ── 1. Sticky App Header ───────────────────────────────────
-              SliverAppBar(
+          RefreshIndicator(
+            onRefresh: () async {
+              context.read<OffersBloc>().add(FetchOffersRequested(
+                location: _currentLocation,
+                page: 1,
+                limit: 20,
+                refresh: true,
+              ));
+              context.read<HomeBloc>().add(const HomeStarted());
+            },
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // ── 1. Sticky App Header ───────────────────────────────────
+                SliverAppBar(
                 pinned: true,
                 floating: false,
                 elevation: 0,
@@ -270,38 +275,91 @@ class _HomeViewState extends State<_HomeView>
                       // Notification + Avatar
                       Row(
                         children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: AppTheme.cardSurface,
-                              shape: BoxShape.circle,
-                              boxShadow: AppTheme.softCardShadow,
-                            ),
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.notifications_none_rounded,
-                                  color: AppTheme.textPrimary, size: 21),
-                              onPressed: () {},
+                          GestureDetector(
+                            onTap: () async {
+                              // Navigate to notifications page
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationsPage(),
+                                ),
+                              );
+                              // Reload unread count after returning
+                              _loadUnreadCount();
+                            },
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.cardSurface,
+                                    shape: BoxShape.circle,
+                                    boxShadow: AppTheme.softCardShadow,
+                                  ),
+                                  child: IconButton(
+                                    padding: EdgeInsets.zero,
+                                    icon: const Icon(Icons.notifications_none_rounded,
+                                        color: AppTheme.textPrimary, size: 21),
+                                    onPressed: () async {
+                                      // Navigate to notifications page
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const NotificationsPage(),
+                                        ),
+                                      );
+                                      // Reload unread count after returning
+                                      _loadUnreadCount();
+                                    },
+                                    tooltip: 'Notifications',
+                                  ),
+                                ),
+                                if (_unreadCount > 0)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF667EEA),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: const BoxDecoration(
-                              color: AppTheme.darkPill,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                user.name.isNotEmpty
-                                    ? user.name[0].toUpperCase()
-                                    : 'U',
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
+                          GestureDetector(
+                            onTap: () {
+                              // Navigate to profile page (Task 28.12)
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ProfilePage(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: const BoxDecoration(
+                                color: AppTheme.darkPill,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  user.name.isNotEmpty
+                                      ? user.name[0].toUpperCase()
+                                      : 'U',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                             ),
@@ -324,87 +382,6 @@ class _HomeViewState extends State<_HomeView>
                     _HeroOfferCard(location: _currentLocation),
 
                     const SizedBox(height: 20),
-
-                    // 2.2 Quick actions
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildQuickActionButton(
-                              icon: Icons.qr_code_scanner_rounded,
-                              label: 'Redeem',
-                              onTap: () {}),
-                          _buildQuickActionButton(
-                              icon: Icons.check_circle_outline_rounded,
-                              label: 'Vouchers',
-                              onTap: () {}),
-                          _buildQuickActionButton(
-                            icon: Icons.map_rounded,
-                            label: 'Nearby',
-                            onTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const MapDiscoveryPage()));
-                            },
-                          ),
-                          _buildQuickActionButton(
-                              icon: Icons.more_horiz_rounded,
-                              label: 'More',
-                              onTap: () {}),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    // 2.3 Search bar
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppTheme.cardSurface,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: AppTheme.softCardShadow,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 2),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.search_rounded,
-                                color: AppTheme.textPrimary, size: 22),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextField(
-                                controller: _homeSearchController,
-                                onSubmitted: _navigateToResults,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimary,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText:
-                                      'Search restaurants, cafes, salons...',
-                                  hintStyle: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13.5,
-                                    color: AppTheme.textMuted,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 14),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
 
                     const SizedBox(height: 24),
 
@@ -431,7 +408,7 @@ class _HomeViewState extends State<_HomeView>
                       },
                     ),
 
-                    const SectionGapNormal(),
+                    SectionGapNormal(),
 
                     // 2.5 Category cards — real data from HomeBloc
                     BlocBuilder<HomeBloc, HomeState>(
@@ -442,15 +419,12 @@ class _HomeViewState extends State<_HomeView>
                           return CategoryCardFromApi(
                             categories: categories,
                             onCategoryTap: (categoryName) {
-                              context.read<OffersBloc>().add(
-                                    FetchOffersRequested(
-                                      category: categoryName,
-                                      location: _currentLocation,
-                                      page: 1,
-                                      limit: 20,
-                                      refresh: true,
-                                    ),
-                                  );
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CategoryOffersPage(categoryName: categoryName),
+                                ),
+                              );
                             },
                           );
                         }
@@ -467,7 +441,7 @@ class _HomeViewState extends State<_HomeView>
                       },
                     ),
 
-                    const SectionGapNormal(),
+                    SectionGapNormal(),
 
                     // 2.6 Popular Deals — from OffersBloc (featured offers)
                     BlocBuilder<OffersBloc, OffersState>(
@@ -493,7 +467,7 @@ class _HomeViewState extends State<_HomeView>
                       },
                     ),
 
-                    const SectionGapNormal(),
+                    SectionGapNormal(),
 
                     // 2.7 Featured Collections — from OffersBloc
                     BlocBuilder<OffersBloc, OffersState>(
@@ -510,7 +484,7 @@ class _HomeViewState extends State<_HomeView>
                       },
                     ),
 
-                    const SectionGapNormal(),
+                    SectionGapNormal(),
 
                     // 2.8 User Reviews — static (no API yet)
                     const UserReviewsSlider(
@@ -542,10 +516,11 @@ class _HomeViewState extends State<_HomeView>
               ),
             ],
           ),
+        ),
 
           // ── 3. Map FAB ────────────────────────────────────────────────
           Positioned(
-            bottom: 30,
+            bottom: 120,
             right: 20,
             child: ScaleTransition(
               scale: _fabScaleAnimation,
@@ -602,38 +577,6 @@ class _HomeViewState extends State<_HomeView>
     );
   }
 
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: AppTheme.cardSurface,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: AppTheme.softCardShadow,
-            ),
-            child: Icon(icon, color: AppTheme.textPrimary, size: 22),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ── Hero card: shows the top featured offer from the API ─────────────────────
@@ -799,7 +742,7 @@ class _HeroOfferCard extends StatelessWidget {
                                       height: 82,
                                       color: AppTheme.surfaceSubtle,
                                       child: const Center(
-                                          child: CircularProgressIndicator()),
+                                          child: SkeletonLoader(width: 40, height: 40)),
                                     ),
                             ),
                           ],

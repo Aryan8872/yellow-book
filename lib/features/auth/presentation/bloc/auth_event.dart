@@ -34,3 +34,37 @@ final class RegisterRequested extends AuthEvent {
 final class LogoutRequested extends AuthEvent {
   const LogoutRequested();
 }
+
+final class UpdateProfileRequested extends AuthEvent {
+  final String name;
+  final String? phone;
+  final String? avatarUrl;
+
+  const UpdateProfileRequested({
+    required this.name,
+    this.phone,
+    this.avatarUrl,
+  });
+}
+
+final class GoogleLoginRequested extends AuthEvent {
+  final String idToken;
+
+  const GoogleLoginRequested({required this.idToken});
+}
+
+final class ForgotPasswordRequested extends AuthEvent {
+  final String email;
+
+  const ForgotPasswordRequested({required this.email});
+}
+
+final class ResetPasswordRequested extends AuthEvent {
+  final String token;
+  final String newPassword;
+
+  const ResetPasswordRequested({
+    required this.token,
+    required this.newPassword,
+  });
+}

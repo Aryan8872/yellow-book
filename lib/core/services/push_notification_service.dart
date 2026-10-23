@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:entertainer/core/services/notification_inbox_service.dart';
 
 /// Top-level handler for background FCM messages (must be top-level, not a method)
 @pragma('vm:entry-point')
@@ -20,6 +21,7 @@ class PushNotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  final NotificationInboxService _inboxService = NotificationInboxService();
 
   static const _channelId = 'offernepal_deals';
   static const _channelName = 'Offers & Deals';
@@ -86,6 +88,15 @@ class PushNotificationService {
     final notification = message.notification;
     if (notification == null) return;
 
+    // Persist to inbox before showing local notification
+    _inboxService.onMessage(
+      title: notification.title ?? 'New Notification',
+      body: notification.body ?? '',
+      data: message.data,
+      receivedAt: DateTime.now(),
+      messageId: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
     _localNotifications.show(
       notification.hashCode,
       notification.title,
@@ -110,8 +121,20 @@ class PushNotificationService {
 
   void _onMessageTapped(RemoteMessage message) {
     debugPrint('[FCM] Notification tapped: ${message.data}');
+
+    // Persist to inbox
+    _inboxService.onMessage(
+      title: message.notification?.title ?? 'New Notification',
+      body: message.notification?.body ?? '',
+      data: message.data,
+      receivedAt: DateTime.now(),
+      messageId: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
     // Deep-link handling: the offerId is passed in data payload
+    // Documented convention: data.offerId can be used to navigate to offer detail
     // Navigation is handled via app_links which picks up the FCM data URL
+    // If data.offerId is present, the app can navigate to OfferDetailPage
   }
 
   /// Returns the FCM registration token for the current device (for debugging)

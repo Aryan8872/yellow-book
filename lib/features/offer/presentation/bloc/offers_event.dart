@@ -10,6 +10,7 @@ final class FetchOffersRequested extends OffersEvent {
   final double? radiusKm;
   final String? location;
   final String? sortBy;
+  final String? merchantId;
   final int page;
   final int limit;
   final bool refresh;
@@ -22,6 +23,7 @@ final class FetchOffersRequested extends OffersEvent {
     this.radiusKm,
     this.location,
     this.sortBy,
+    this.merchantId,
     this.page = 1,
     this.limit = 20,
     this.refresh = false,

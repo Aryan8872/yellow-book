@@ -272,7 +272,7 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => RedemptionDetailPage(
-                                  redemption: item.toJson(),
+                                  redemption: item,
                                 ),
                               ),
                             );

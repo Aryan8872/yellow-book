@@ -105,7 +105,7 @@ class FeaturedOffersSlider extends StatelessWidget {
         _categoryFallbacks['DINING']!;
 
     final location = offer.merchant?.branches.isNotEmpty == true
-        ? '${offer.merchant!.branches.first.city}'
+        ? offer.merchant!.branches.first.city
         : (offer.merchantName ?? 'Nepal');
 
     final tag = offer.discountPercentage != null && offer.discountPercentage! > 0

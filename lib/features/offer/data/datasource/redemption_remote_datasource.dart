@@ -4,7 +4,8 @@ import 'package:entertainer/features/offer/data/model/redemption_model.dart';
 
 abstract class RedemptionRemoteDatasource {
   Future<RedemptionModel> initRedemption(String offerId);
-  Future<List<RedemptionModel>> getMyRedemptions();
+  Future<List<RedemptionModel>> getMyRedemptions({String? offerId});
+  Future<void> cancelRedemption(String sessionId);
 }
 
 class RedemptionRemoteDatasourceImpl implements RedemptionRemoteDatasource {
@@ -32,8 +33,16 @@ class RedemptionRemoteDatasourceImpl implements RedemptionRemoteDatasource {
   }
 
   @override
-  Future<List<RedemptionModel>> getMyRedemptions() async {
-    final response = await dio.get(ApiEndpoints.myRedemptions);
+  Future<List<RedemptionModel>> getMyRedemptions({String? offerId}) async {
+    final queryParams = <String, dynamic>{};
+    if (offerId != null && offerId.isNotEmpty) {
+      queryParams['offerId'] = offerId;
+    }
+
+    final response = await dio.get(
+      ApiEndpoints.myRedemptions,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
     final raw = response.data;
 
     // Unwrap envelope — expect { data: [...] } or { data: { items: [...] } }
@@ -54,5 +63,10 @@ class RedemptionRemoteDatasourceImpl implements RedemptionRemoteDatasource {
         .whereType<Map>()
         .map((e) => RedemptionModel.fromJson(Map<String, dynamic>.from(e)))
         .toList();
+  }
+
+  @override
+  Future<void> cancelRedemption(String sessionId) async {
+    await dio.post(ApiEndpoints.cancelRedemption(sessionId));
   }
 }

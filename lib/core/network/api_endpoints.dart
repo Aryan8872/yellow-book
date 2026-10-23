@@ -6,6 +6,7 @@ class ApiEndpoints {
   static const String register = '/auth/register';
   static const String refresh = '/auth/refresh';
   static const String me = '/auth/me';
+  static const String profile = '/auth/profile';
   static const String logout = '/auth/logout';
   static const String forgotPassword = '/auth/forgot-password';
   static const String resetPassword = '/auth/reset-password';
@@ -25,6 +26,10 @@ class ApiEndpoints {
   // Categories
   static const String categories = '/categories';
   static String categoryById(String id) => '/categories/$id';
+
+  // Locations
+  static const String locationsSearch = '/locations/search';
+  static const String locationsReverse = '/locations/reverse';
 
   // Consumer Redemptions
   static String redeemInit(String offerId) => '/offers/$offerId/redeem-init';

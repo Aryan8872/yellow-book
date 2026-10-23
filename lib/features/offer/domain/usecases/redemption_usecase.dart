@@ -18,6 +18,15 @@ class GetMyRedemptionsUsecase {
   final RedemptionRepository repository;
   GetMyRedemptionsUsecase(this.repository);
 
-  Future<Either<Failure, List<RedemptionEntity>>> call() =>
-      repository.getMyRedemptions();
+  Future<Either<Failure, List<RedemptionEntity>>> call({String? offerId}) =>
+      repository.getMyRedemptions(offerId: offerId);
+}
+
+@Injectable()
+class CancelRedemptionUsecase {
+  final RedemptionRepository repository;
+  CancelRedemptionUsecase(this.repository);
+
+  Future<Either<Failure, void>> call(String sessionId) =>
+      repository.cancelRedemption(sessionId);
 }

@@ -13,6 +13,12 @@ final class FetchMyRedemptionsRequested extends RedemptionEvent {
   const FetchMyRedemptionsRequested();
 }
 
+/// Trigger: user cancels their own redemption (INIT status only).
+final class CancelRedemptionRequested extends RedemptionEvent {
+  final String sessionId;
+  const CancelRedemptionRequested(this.sessionId);
+}
+
 /// Reset back to initial (e.g. on bottom-sheet dismiss).
 final class RedemptionReset extends RedemptionEvent {
   const RedemptionReset();

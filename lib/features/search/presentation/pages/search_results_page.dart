@@ -3,21 +3,31 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
+import 'package:entertainer/core/widgets/category_pill_row.dart';
 import 'package:entertainer/features/map/presentation/pages/map_discovery_page.dart';
 import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_bloc.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_event.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_state.dart';
 import 'package:entertainer/features/offer/presentation/pages/offer_detail_page.dart';
+import 'package:entertainer/features/home/data/datasources/category_remote_datasource.dart';
 
 class SearchResultsPage extends StatelessWidget {
   final String query;
   final String? initialCategory;
+  final double? lat;
+  final double? lng;
+  final double? radiusKm;
+  final String? placeLabel;
 
   const SearchResultsPage({
     super.key,
     required this.query,
     this.initialCategory,
+    this.lat,
+    this.lng,
+    this.radiusKm,
+    this.placeLabel,
   });
 
   @override
@@ -27,11 +37,18 @@ class SearchResultsPage extends StatelessWidget {
         ..add(FetchOffersRequested(
           q: query.isNotEmpty ? query : null,
           category: initialCategory,
+          lat: lat,
+          lng: lng,
+          radiusKm: radiusKm,
           page: 1,
           limit: 20,
           refresh: true,
         )),
-      child: _SearchResultsView(query: query, initialCategory: initialCategory),
+      child: _SearchResultsView(
+        query: query,
+        initialCategory: initialCategory,
+        placeLabel: placeLabel,
+      ),
     );
   }
 }
@@ -39,8 +56,9 @@ class SearchResultsPage extends StatelessWidget {
 class _SearchResultsView extends StatefulWidget {
   final String query;
   final String? initialCategory;
+  final String? placeLabel;
 
-  const _SearchResultsView({required this.query, this.initialCategory});
+  const _SearchResultsView({required this.query, this.initialCategory, this.placeLabel});
 
   @override
   State<_SearchResultsView> createState() => _SearchResultsViewState();
@@ -49,26 +67,51 @@ class _SearchResultsView extends StatefulWidget {
 class _SearchResultsViewState extends State<_SearchResultsView> {
   late TextEditingController _searchController;
   late ScrollController _scrollController;
+  final CategoryRemoteDataSource _categoryDataSource = getIt<CategoryRemoteDataSource>();
 
-  final List<String> _categories = [
-    'All',
-    'Dining',
-    'Wellness',
-    'Hotels',
-    'Activities',
-    'Retail',
-    'Entertainment',
-  ];
-
-  String _selectedCategory = 'All';
+  List<CategoryModel> _categories = [];
+  bool _categoriesLoading = true;
+  bool _categoriesError = false;
+  String? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController(text: widget.query);
-    _selectedCategory = widget.initialCategory ?? 'All';
+    _selectedCategory = widget.initialCategory;
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() {
+      _categoriesLoading = true;
+      _categoriesError = false;
+    });
+
+    try {
+      final categories = await _categoryDataSource.getCategories();
+      if (mounted) {
+        setState(() {
+          _categories = categories;
+          _categoriesLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _categoriesLoading = false;
+          _categoriesError = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Couldn\'t load categories'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   void _onScroll() {
@@ -94,6 +137,12 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
           limit: 20,
           refresh: true,
         ));
+    // Reset scroll to top
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -204,62 +253,85 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
             const SizedBox(height: 8),
 
             // Category filter chips
-            SizedBox(
-              height: 38,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _categories.length,
-                itemBuilder: (context, index) {
-                  final cat = _categories[index];
-                  final isSelected = _selectedCategory == cat;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedCategory = cat);
-                      _triggerSearch(_searchController.text, category: cat);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppTheme.darkAnchor
-                            : AppTheme.cardSurface,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: isSelected ? [] : AppTheme.softCardShadow,
-                      ),
-                      child: Text(
-                        cat,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: isSelected
-                              ? Colors.white
-                              : AppTheme.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+            CategoryPillRow(
+              categories: _categories,
+              selectedCategory: _selectedCategory,
+              onSelected: (category) {
+                setState(() => _selectedCategory = category);
+                _triggerSearch(_searchController.text, category: category);
+              },
+              isLoading: _categoriesLoading,
+              hasError: _categoriesError,
             ),
 
             const SizedBox(height: 12),
 
+            // Result count / Title
+            BlocBuilder<OffersBloc, OffersState>(
+              builder: (context, state) {
+                if (widget.placeLabel != null) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      'Offers near ${widget.placeLabel}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  );
+                }
+                if (state is OffersLoaded) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${state.offers.length} results',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textMuted,
+                          ),
+                        ),
+                        if (state.total != null && state.total > state.offers.length)
+                          Text(
+                            ' of ${state.total}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: AppTheme.textMuted,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            const SizedBox(height: 8),
+
             Expanded(
-              child: BlocBuilder<OffersBloc, OffersState>(
-                builder: (context, state) {
-                  if (state is OffersLoading) return _buildSkeletonList();
-                  if (state is OffersError) return _buildError(state.message);
-                  if (state is OffersLoaded) {
-                    if (state.offers.isEmpty) return _buildEmpty();
-                    return _buildList(state);
-                  }
-                  return _buildSkeletonList();
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  _triggerSearch(_searchController.text, category: _selectedCategory);
                 },
+                child: BlocBuilder<OffersBloc, OffersState>(
+                  builder: (context, state) {
+                    if (state is OffersLoading) return _buildSkeletonList();
+                    if (state is OffersError) return _buildError(state.message);
+                    if (state is OffersLoaded) {
+                      if (state.offers.isEmpty) return _buildEmpty();
+                      return _buildList(state);
+                    }
+                    return _buildSkeletonList();
+                  },
+                ),
               ),
             ),
           ],

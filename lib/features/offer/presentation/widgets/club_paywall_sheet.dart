@@ -94,8 +94,8 @@ class _ClubPaywallSheetState extends State<ClubPaywallSheet> {
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: _selectedGateway == 'KHALTI'
-                    ? const Color(0xFF5C2D91).withOpacity(0.12)
-                    : const Color(0xFF60BB46).withOpacity(0.12),
+                    ? const Color(0xFF5C2D91).withValues(alpha: 0.12)
+                    : const Color(0xFF60BB46).withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -123,7 +123,7 @@ class _ClubPaywallSheetState extends State<ClubPaywallSheet> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.08),
+                color: Colors.grey.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -206,7 +206,7 @@ class _ClubPaywallSheetState extends State<ClubPaywallSheet> {
             height: 4,
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -223,7 +223,7 @@ class _ClubPaywallSheetState extends State<ClubPaywallSheet> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFF59E0B).withOpacity(0.35),
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
@@ -362,7 +362,7 @@ class _ClubPaywallSheetState extends State<ClubPaywallSheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? activeColor : AppTheme.borderLight,
@@ -402,7 +402,7 @@ class _ClubPaywallSheetState extends State<ClubPaywallSheet> {
         Container(
           padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
-            color: const Color(0xFFF59E0B).withOpacity(0.12),
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: const Color(0xFFD97706), size: 18),
@@ -448,7 +448,7 @@ class _ClubPaywallSheetState extends State<ClubPaywallSheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          color: isPopular ? const Color(0xFFF59E0B).withOpacity(0.08) : Colors.transparent,
+          color: isPopular ? const Color(0xFFF59E0B).withValues(alpha: 0.08) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isPopular ? const Color(0xFFF59E0B) : AppTheme.borderLight,

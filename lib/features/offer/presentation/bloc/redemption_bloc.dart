@@ -8,11 +8,16 @@ import 'redemption_state.dart';
 class RedemptionBloc extends Bloc<RedemptionEvent, RedemptionState> {
   final InitRedemptionUsecase _initRedemption;
   final GetMyRedemptionsUsecase _getMyRedemptions;
+  final CancelRedemptionUsecase _cancelRedemption;
 
-  RedemptionBloc(this._initRedemption, this._getMyRedemptions)
-      : super(const RedemptionInitial()) {
+  RedemptionBloc(
+    this._initRedemption,
+    this._getMyRedemptions,
+    this._cancelRedemption,
+  ) : super(const RedemptionInitial()) {
     on<InitRedemptionRequested>(_onInitRedemption);
     on<FetchMyRedemptionsRequested>(_onFetchHistory);
+    on<CancelRedemptionRequested>(_onCancelRedemption);
     on<RedemptionReset>((_, emit) => emit(const RedemptionInitial()));
   }
 
@@ -37,6 +42,18 @@ class RedemptionBloc extends Bloc<RedemptionEvent, RedemptionState> {
     result.fold(
       (failure) => emit(RedemptionError(failure.message)),
       (list) => emit(RedemptionHistoryLoaded(list)),
+    );
+  }
+
+  Future<void> _onCancelRedemption(
+    CancelRedemptionRequested event,
+    Emitter<RedemptionState> emit,
+  ) async {
+    emit(const RedemptionLoading());
+    final result = await _cancelRedemption.call(event.sessionId);
+    result.fold(
+      (failure) => emit(RedemptionError(failure.message)),
+      (_) => emit(const RedemptionCancelSuccess()),
     );
   }
 }

@@ -28,3 +28,20 @@ final class MapCardDismissed extends MapEvent {
 final class MapRecenterRequested extends MapEvent {
   const MapRecenterRequested();
 }
+
+final class MapFocusBranchRequested extends MapEvent {
+  final double lat;
+  final double lng;
+  final String? title;
+  const MapFocusBranchRequested({
+    required this.lat,
+    required this.lng,
+    this.title,
+  });
+}
+
+final class MapErrorOccurred extends MapEvent {
+  final String message;
+  final String? details;
+  const MapErrorOccurred(this.message, [this.details]);
+}
