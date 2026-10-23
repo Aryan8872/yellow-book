@@ -38,15 +38,12 @@ dependencies:
   go_router: ^12.1.1
 
   # Freezed runtime annotation
-  freezed_annotation: ^2.4.1
-  json_annotation: ^4.9.0
+  # (freezed/json_serializable removed 2026-10-23 — zero annotations/imports anywhere in lib/,
+  # their new-analyzer requirements conflicted with bloc_test's `test` dep. Keep the comment
+  # until the next dependency audit rebuilds codegen tooling.)
 
   # QR code rendering
   qr_flutter: ^4.1.0
-
-  # local db etc
-  floor: ^1.4.2
-  sqflite: ^2.3.0
 
   cupertino_icons: ^1.0.8
   dartz: ^0.10.1
@@ -88,13 +85,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Test doubles + bloc testing (Phase 30 — approved dev-deps)
+  mocktail: ^1.0.5
+  bloc_test: ^9.1.2
+
   # Code generation tools
   build_runner: ^2.4.13
   flutter_launcher_icons: ^0.13.1
-  freezed: ^2.5.2
-  json_serializable: ^6.8.0
   injectable_generator: ^2.6.2
-  floor_generator: ^1.4.2
 
   flutter_lints: ^6.0.0
 
