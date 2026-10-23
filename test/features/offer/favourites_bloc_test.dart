@@ -46,10 +46,9 @@ void main() {
         bloc.add(const FavouriteToggled('c'));
       },
       expect: () => [
-        FavouritesState(
-          favouriteIds: {'a', 'b', 'c'},
-          favourites: [offerA, offerB],
-        ),
+        // bloc 8 dedupes ==-equal consecutive emissions: the reconcile of
+        // {a,b,c} with server truth "true" is ==-equal to the optimistic
+        // state, so exactly ONE visible emission carries both steps.
         FavouritesState(
           favouriteIds: {'a', 'b', 'c'},
           favourites: [offerA, offerB],

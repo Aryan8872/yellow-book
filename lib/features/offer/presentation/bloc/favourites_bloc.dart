@@ -98,6 +98,11 @@ class FavouritesBloc extends Bloc<FavouritesEvent, FavouritesState> {
     Emitter<FavouritesState> emit,
   ) async {
     final wasLiked = state.favouriteIds.contains(event.offerId);
+    // D3 rollback: capture the FULL pre-toggle snapshot (ids AND favourites
+    // list) BEFORE any optimistic emit, so the catch branch restores the
+    // exact previous liked state instead of reading post-optimistic state.
+    final previousIds = Set<String>.from(state.favouriteIds);
+    final previousFavourites = List<OfferEntity>.from(state.favourites);
     // Optimistic update
     final optimisticIds = Set<String>.from(state.favouriteIds);
     final optimisticFavourites = List<OfferEntity>.from(state.favourites);
@@ -111,8 +116,8 @@ class FavouritesBloc extends Bloc<FavouritesEvent, FavouritesState> {
 
     try {
       final isNowFavourite = await _dataSource.toggleFavourite(event.offerId);
-      // Reconcile with server response
-      final reconciledIds = Set<String>.from(state.favouriteIds);
+      // Reconcile with server response, starting from the optimistic set.
+      final reconciledIds = Set<String>.from(optimisticIds);
       if (isNowFavourite) {
         reconciledIds.add(event.offerId);
       } else {
@@ -120,8 +125,12 @@ class FavouritesBloc extends Bloc<FavouritesEvent, FavouritesState> {
       }
       emit(state.copyWith(favouriteIds: reconciledIds));
     } catch (_) {
-      // Revert optimistic update on error
-      emit(state.copyWith(favouriteIds: Set<String>.from(state.favouriteIds)));
+      // Revert optimistic update on error: restore the EXACT pre-toggle
+      // snapshot (independent copies — no shared mutable reference).
+      emit(state.copyWith(
+        favouriteIds: Set<String>.from(previousIds),
+        favourites: List<OfferEntity>.from(previousFavourites),
+      ));
     }
   }
 }
