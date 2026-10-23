@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/core/di/service_loader.dart';
+import 'package:entertainer/core/widgets/status_badge.dart';
 import 'package:entertainer/features/offer/domain/entity/redemption_entity.dart';
 import 'package:entertainer/features/offer/presentation/bloc/redemption_bloc.dart';
 import 'package:entertainer/features/offer/presentation/bloc/redemption_event.dart';
@@ -314,26 +315,15 @@ class _VoucherCard extends StatelessWidget {
         (redemption.expiresAt != null && redemption.expiresAt!.isBefore(DateTime.now()));
     final isCancelled = redemption.status == 'REJECTED' || redemption.status == 'CANCELLED';
 
-    Color badgeColor;
-    Color badgeTextColor;
-    String badgeText;
-
-    if (isCompleted) {
-      badgeColor = const Color(0xFF10B981).withValues(alpha: 0.15);
-      badgeTextColor = const Color(0xFF10B981);
-      badgeText = 'REDEEMED';
-    } else if (isExpired) {
-      badgeColor = const Color(0xFFEF4444).withValues(alpha: 0.12);
-      badgeTextColor = const Color(0xFFEF4444);
-      badgeText = 'EXPIRED';
-    } else if (isCancelled) {
-      badgeColor = const Color(0xFF6B7280).withValues(alpha: 0.12);
-      badgeTextColor = const Color(0xFF6B7280);
-      badgeText = 'CANCELLED';
-    } else {
-      badgeColor = AppTheme.pastelMint;
-      badgeTextColor = AppTheme.darkAnchor;
-      badgeText = 'ACTIVE';
+    // Resolved status for the canonical StatusBadge: active-state vouchers
+    // whose expiry has passed visually resolve to EXPIRED (preserves the old
+    // date-collapse behavior); all other statuses map via the canonical table.
+    String resolvedStatus = redemption.status;
+    if ((resolvedStatus == 'INIT' || resolvedStatus == 'PENDING_SYNC')) {
+      final expiresAt = redemption.expiresAt;
+      if (expiresAt != null && expiresAt.isBefore(DateTime.now())) {
+        resolvedStatus = 'EXPIRED';
+      }
     }
 
     final code = redemption.redemptionCode ??
@@ -390,22 +380,7 @@ class _VoucherCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: badgeColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        badgeText,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          color: badgeTextColor,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
+                    StatusBadge(status: resolvedStatus),
                   ],
                 ),
                 const SizedBox(height: 8),

@@ -29,7 +29,7 @@ class ApiEndpoints {
   // Consumer Redemptions
   static String redeemInit(String offerId) => '/offers/$offerId/redeem-init';
   static const String myRedemptions = '/redemptions/me';
-  static String cancelRedemption(String sessionId) => '/redemptions/redemption/$sessionId/cancel';
+  static String cancelRedemption(String sessionId) => '/redemption/$sessionId/cancel';
 
   // Subscriptions & Checkout
   static const String subscriptionPlans = '/payments/plans';
