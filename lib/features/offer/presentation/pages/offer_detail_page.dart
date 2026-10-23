@@ -10,6 +10,9 @@ import 'package:entertainer/features/offer/presentation/bloc/redemption_event.da
 import 'package:entertainer/features/offer/presentation/bloc/redemption_state.dart';
 import 'package:entertainer/features/offer/presentation/widgets/merchant_pin_redemption_modal.dart';
 import 'package:entertainer/features/offer/presentation/widgets/redemption_code_sheet.dart';
+import 'package:entertainer/features/review/presentation/bloc/review_bloc.dart';
+import 'package:entertainer/features/review/presentation/bloc/review_event.dart';
+import 'package:entertainer/features/review/presentation/bloc/review_state.dart';
 import 'package:entertainer/features/offer/presentation/bloc/favourites_bloc.dart';
 import 'package:entertainer/features/offer/presentation/bloc/favourites_event.dart';
 import 'package:entertainer/features/offer/presentation/bloc/favourites_state.dart';
@@ -51,6 +54,7 @@ class OfferDetailPage extends StatelessWidget {
         BlocProvider<OfferDetailBloc>(create: (context) => OfferDetailBloc()),
         BlocProvider<RedemptionBloc>(create: (context) => getIt<RedemptionBloc>()),
         BlocProvider<FavouritesBloc>(create: (context) => getIt<FavouritesBloc>()..add(const FavouritesLoadRequested())),
+        BlocProvider<ReviewsBloc>(create: (context) => getIt<ReviewsBloc>()),
       ],
       child: _OfferDetailView(offer: offer),
     );
