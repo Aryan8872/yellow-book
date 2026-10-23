@@ -35,4 +35,25 @@ class RedemptionEntity {
     final code = redemptionCode ?? (id.isNotEmpty ? id.substring(0, 8).toUpperCase() : '');
     return 'offernepal://redeem?code=$code';
   }
+
+  /// Convert entity to JSON map for navigation
+  Map<String, dynamic> toJson() {
+    return {
+      'sessionId': id,
+      'id': id,
+      'offerId': offerId,
+      'offer': {
+        'id': offerId,
+        'title': offerTitle,
+      },
+      'merchant': {
+        'name': merchantName,
+      },
+      'status': status,
+      'code': redemptionCode,
+      'qrPayload': qrPayload ?? computedQrPayload,
+      'redeemedAt': redeemedAt.toIso8601String(),
+      'expiresAt': expiresAt?.toIso8601String(),
+    };
+  }
 }

@@ -6,6 +6,8 @@ import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_event.dart';
+import 'package:entertainer/features/auth/presentation/pages/edit_profile_page.dart';
+import 'package:entertainer/features/subscription/presentation/pages/subscription_page.dart';
 import 'package:entertainer/features/offer/data/datasource/redemption_remote_datasource.dart';
 import 'package:entertainer/features/offer/data/model/redemption_model.dart';
 
@@ -115,6 +117,16 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 actions: [
                   IconButton(
+                    icon: const Icon(Icons.edit_rounded, color: Colors.white70),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const EditProfilePage()),
+                      );
+                    },
+                    tooltip: 'Edit profile',
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.logout_rounded, color: Colors.white70),
                     onPressed: () => _confirmLogout(context),
                     tooltip: 'Sign out',
@@ -143,6 +155,71 @@ class _ProfilePageState extends State<ProfilePage> {
                         color: AppTheme.savingsGreen,
                       ),
                     ],
+                  ),
+                ),
+              ),
+
+              // ── Subscription Card ─────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: AppTheme.softCardShadow,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.card_membership_rounded, color: Colors.white, size: 32),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Club Premium',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Unlimited redemptions • Exclusive offers',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
