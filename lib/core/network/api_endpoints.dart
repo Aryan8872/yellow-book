@@ -9,6 +9,7 @@ class ApiEndpoints {
   static const String logout = '/auth/logout';
   static const String forgotPassword = '/auth/forgot-password';
   static const String resetPassword = '/auth/reset-password';
+  static const String googleAuth = '/auth/google';
 
   // Offers Catalog
   static const String offersHome = '/offers/home';
@@ -24,6 +25,7 @@ class ApiEndpoints {
   // Consumer Redemptions
   static String redeemInit(String offerId) => '/offers/$offerId/redeem-init';
   static const String myRedemptions = '/redemptions/me';
+  static String cancelRedemption(String sessionId) => '/redemptions/redemption/$sessionId/cancel';
 
   // Subscriptions & Checkout
   static const String subscriptionPlans = '/payments/plans';
