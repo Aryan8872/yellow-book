@@ -742,7 +742,7 @@ class _OffersTab extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      physics: const NeverScrollableScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       children: [
         // Savings summary banner
         Container(
@@ -989,7 +989,7 @@ class _AboutTab extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      physics: const NeverScrollableScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       children: [
         // About card
         Container(
@@ -1247,7 +1247,7 @@ class _ReviewsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      physics: const NeverScrollableScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       children: [
         // Rating summary
         Container(
