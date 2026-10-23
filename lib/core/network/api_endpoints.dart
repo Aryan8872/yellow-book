@@ -18,6 +18,10 @@ class ApiEndpoints {
   static String trackOfferView(String id) => '/offers/$id/view';
   static String trackOfferRedeem(String id) => '/offers/$id/redeem';
 
+  // Favourites
+  static String offerFavourite(String offerId) => '/offers/$offerId/favourite';
+  static const String favourites = '/offers/favourites';
+
   // Categories
   static const String categories = '/categories';
   static String categoryById(String id) => '/categories/$id';

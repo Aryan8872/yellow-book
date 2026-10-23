@@ -227,7 +227,7 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
                                         id: '',
                                         email: '',
                                         name: '',
-                                        role: 'CONSUMER',
+                                        phone: '',
                                       ),
                                     ),
                                   ),

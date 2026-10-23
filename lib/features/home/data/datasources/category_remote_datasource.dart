@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:entertainer/core/network/api_endpoints.dart';
 
 class CategoryModel {
   final String id;
@@ -50,9 +51,27 @@ class CategoryRemoteDataSourceImpl implements CategoryRemoteDataSource {
 
   @override
   Future<List<CategoryModel>> getCategories() async {
-    final response = await dio.get('/categories', queryParameters: {'isActive': true});
-    return (response.data as List)
-        .map((e) => CategoryModel.fromJson(Map<String, dynamic>.from(e as Map)))
+    final response = await dio.get(
+      ApiEndpoints.categories,
+      queryParameters: {'isActive': true},
+    );
+    final raw = response.data;
+
+    // Unwrap NestJS envelope — expect { data: [...] } or a plain list;
+    // malformed shapes degrade to [] (never throw a TypeError).
+    List<dynamic> list = [];
+    if (raw is Map) {
+      final inner = raw['data'];
+      if (inner is List) {
+        list = inner;
+      }
+    } else if (raw is List) {
+      list = raw;
+    }
+
+    return list
+        .whereType<Map>()
+        .map((e) => CategoryModel.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 }
