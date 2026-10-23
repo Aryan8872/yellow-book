@@ -10,6 +10,9 @@ import 'package:entertainer/features/offer/presentation/bloc/redemption_event.da
 import 'package:entertainer/features/offer/presentation/bloc/redemption_state.dart';
 import 'package:entertainer/features/offer/presentation/widgets/merchant_pin_redemption_modal.dart';
 import 'package:entertainer/features/offer/presentation/widgets/redemption_code_sheet.dart';
+import 'package:entertainer/features/offer/presentation/bloc/favourites_bloc.dart';
+import 'package:entertainer/features/offer/presentation/bloc/favourites_event.dart';
+import 'package:entertainer/features/offer/presentation/bloc/favourites_state.dart';
 import 'package:entertainer/features/offer/presentation/widgets/club_paywall_sheet.dart';
 import '../bloc/offer_detail_bloc.dart';
 import 'package:entertainer/features/home/presentation/widgets/story_viewer_modal.dart';
@@ -47,6 +50,7 @@ class OfferDetailPage extends StatelessWidget {
       providers: [
         BlocProvider<OfferDetailBloc>(create: (context) => OfferDetailBloc()),
         BlocProvider<RedemptionBloc>(create: (context) => getIt<RedemptionBloc>()),
+        BlocProvider<FavouritesBloc>(create: (context) => getIt<FavouritesBloc>()..add(const FavouritesLoadRequested())),
       ],
       child: _OfferDetailView(offer: offer),
     );
@@ -239,12 +243,16 @@ class _OfferDetailViewState extends State<_OfferDetailView>
                                 _GlassButton(
                                   icon: Icons.favorite_border_rounded,
                                   iconColor: const Color(0xFFEF4444),
-                                  onTap: () {},
+                                  onTap: () {
+                                        context.read<FavouritesBloc>().add(FavouriteToggled(widget.offer.id ?? ''));
+                                      },
                                 ),
                                 const SizedBox(width: 8),
                                 _GlassButton(
                                   icon: Icons.share_outlined,
-                                  onTap: () {},
+                                  onTap: () {
+                                        context.read<FavouritesBloc>().add(FavouriteToggled(widget.offer.id ?? ''));
+                                      },
                                 ),
                               ],
                             ),
