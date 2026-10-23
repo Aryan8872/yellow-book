@@ -10,6 +10,7 @@ import 'package:entertainer/features/auth/presentation/pages/edit_profile_page.d
 import 'package:entertainer/features/subscription/presentation/pages/subscription_page.dart';
 import 'package:entertainer/features/offer/data/datasource/redemption_remote_datasource.dart';
 import 'package:entertainer/features/offer/data/model/redemption_model.dart';
+import 'package:entertainer/features/profile/presentation/pages/redemption_history_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -20,7 +21,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   List<RedemptionModel> _redemptions = [];
-  bool _loadingRedemptions = true;
 
   @override
   void initState() {
@@ -32,9 +32,9 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final ds = getIt<RedemptionRemoteDatasourceImpl>();
       final results = await ds.getMyRedemptions();
-      if (mounted) setState(() { _redemptions = results; _loadingRedemptions = false; });
+      if (mounted) setState(() { _redemptions = results; });
     } catch (_) {
-      if (mounted) setState(() => _loadingRedemptions = false);
+      // Stats row simply stays empty on failure — no inline list anymore.
     }
   }
 
@@ -149,8 +149,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const SizedBox(width: 12),
                       _StatCard(
                         label: 'Total Saved',
-                        value: _redemptions.isEmpty ? 'NPR 0' :
-                          'NPR ${_redemptions.fold<int>(0, (sum, r) => sum)}',
+                        value: 'NPR ${_redemptions.fold<num>(0, (sum, r) => sum + (r.savingsNpr ?? 0)).toInt()}',
                         icon: Icons.savings_outlined,
                         color: AppTheme.savingsGreen,
                       ),
@@ -224,60 +223,79 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
 
-              // ── Section Header ─────────────────────────────────────────
+              // ── Redemption History Entry Tile ─────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Redemption History',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18, fontWeight: FontWeight.w900,
-                          color: AppTheme.textPrimary, letterSpacing: -0.3,
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RedemptionHistoryPage(),
                         ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardSurface,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppTheme.borderLight),
+                        boxShadow: AppTheme.softCardShadow,
                       ),
-                      const Spacer(),
-                      if (_redemptions.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkPill.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${_redemptions.length} total',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11, fontWeight: FontWeight.w700,
-                              color: AppTheme.textSecondary,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF667EEA).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.confirmation_num_outlined,
+                              color: Color(0xFF667EEA),
+                              size: 22,
                             ),
                           ),
-                        ),
-                    ],
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Redemption History',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "See every voucher you've claimed",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    color: AppTheme.textMuted,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: AppTheme.textMuted,
+                            size: 15,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-
-              // ── Redemption List ────────────────────────────────────────
-              if (_loadingRedemptions)
-                const SliverToBoxAdapter(
-                  child: Center(child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.darkPill),
-                  )),
-                )
-              else if (_redemptions.isEmpty)
-                SliverToBoxAdapter(child: _EmptyHistory())
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, index == _redemptions.length - 1 ? 100 : 12),
-                      child: _RedemptionCard(redemption: _redemptions[index]),
-                    ),
-                    childCount: _redemptions.length,
-                  ),
-                ),
             ],
           ),
         );
@@ -353,135 +371,6 @@ class _StatCard extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RedemptionCard extends StatelessWidget {
-  final RedemptionModel redemption;
-  const _RedemptionCard({required this.redemption});
-
-  Color get _statusColor {
-    switch (redemption.status.toUpperCase()) {
-      case 'REDEEMED': return AppTheme.savingsGreen;
-      case 'INIT': return const Color(0xFFE5A93C);
-      case 'EXPIRED': return const Color(0xFFD93025);
-      default: return AppTheme.textMuted;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: AppTheme.softCardShadow,
-      ),
-      child: Row(
-        children: [
-          // Status icon
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: _statusColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              redemption.status.toUpperCase() == 'REDEEMED'
-                  ? Icons.check_circle_rounded
-                  : Icons.confirmation_num_outlined,
-              color: _statusColor, size: 22,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  redemption.offerTitle,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary,
-                  ),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                ),
-                if (redemption.merchantName != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    redemption.merchantName!,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 4),
-                Text(
-                  _formatDate(redemption.redeemedAt),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              redemption.status.toUpperCase() == 'REDEEMED' ? 'Used' :
-                redemption.status[0].toUpperCase() + redemption.status.substring(1).toLowerCase(),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11, fontWeight: FontWeight.w700, color: _statusColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime dt) {
-    final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
-  }
-}
-
-class _EmptyHistory extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 80),
-      child: Center(
-        child: Column(
-          children: [
-            Container(
-              width: 70, height: 70,
-              decoration: BoxDecoration(
-                color: const Color(0xFF667EEA).withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.confirmation_num_outlined, size: 36, color: Color(0xFF667EEA)),
-            ),
-            const SizedBox(height: 16),
-            Text('No redemptions yet',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 17, fontWeight: FontWeight.w800, color: AppTheme.textPrimary,
-              )),
-            const SizedBox(height: 6),
-            Text('Start redeeming offers to see your history here',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w500,
-              )),
           ],
         ),
       ),
