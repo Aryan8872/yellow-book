@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
@@ -37,6 +38,7 @@ class MapSearchOverlay extends StatefulWidget {
 
 class _MapSearchOverlayState extends State<MapSearchOverlay> {
   bool _showSuggestions = false;
+  bool _suppressNextSearchChange = false;
   Timer? _debounce;
   final PlacesRemoteDataSource _placesDataSource = PlacesRemoteDataSource();
   List<PlaceSuggestion> _placeSuggestions = [];
@@ -56,6 +58,12 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
   }
 
   void _onSearchChanged() {
+    if (_suppressNextSearchChange) {
+      _suppressNextSearchChange = false;
+      _debounce?.cancel();
+      setState(() => _showSuggestions = false);
+      return;
+    }
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       final query = widget.controller.text.trim();
@@ -97,30 +105,50 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
   List<Map<String, dynamic>> get _suggestions {
     final q = widget.controller.text.trim().toLowerCase();
     if (q.isEmpty) return [];
-    return widget.merchants.where((m) {
-      final name = (m['hotelName'] as String? ?? '').toLowerCase();
-      final loc = (m['location'] as String? ?? '').toLowerCase();
-      final tag = (m['highlightTag'] as String? ?? '').toLowerCase();
-      return name.contains(q) || loc.contains(q) || tag.contains(q);
-    }).take(6).toList();
+    return widget.merchants
+        .where((m) {
+          final name = (m['hotelName'] as String? ?? '').toLowerCase();
+          final loc = (m['location'] as String? ?? '').toLowerCase();
+          final branch = (m['branchName'] as String? ?? '').toLowerCase();
+          final tag = (m['highlightTag'] as String? ?? '').toLowerCase();
+          return name.contains(q) || loc.contains(q) || branch.contains(q) || tag.contains(q);
+        })
+        .take(6)
+        .toList();
   }
 
   void _onSelect(Map<String, dynamic> merchant) {
-    widget.controller.text = merchant['hotelName'] as String? ?? '';
-    setState(() => _showSuggestions = false);
+    _debounce?.cancel();
+    _suppressNextSearchChange = true;
+    widget.controller.clear();
+    setState(() {
+      _showSuggestions = false;
+      _placeSuggestions = [];
+    });
+    widget.onQueryChanged('');
     widget.onMerchantSelected(merchant);
   }
 
   void _onPlaceSelected(PlaceSuggestion place) {
-    widget.controller.text = place.name;
-    setState(() => _showSuggestions = false);
+    _debounce?.cancel();
+    _suppressNextSearchChange = true;
+    widget.controller.clear();
+    setState(() {
+      _showSuggestions = false;
+      _placeSuggestions = [];
+    });
+    widget.onQueryChanged('');
     widget.onPlaceSelected(place);
   }
 
   @override
   Widget build(BuildContext context) {
     final suggestions = _suggestions;
-    final hasContent = _showSuggestions && (suggestions.isNotEmpty || _placeSuggestions.isNotEmpty || _placesLoading);
+    final hasContent =
+        _showSuggestions &&
+        (suggestions.isNotEmpty ||
+            _placeSuggestions.isNotEmpty ||
+            _placesLoading);
 
     if (!hasContent) {
       return const SizedBox.shrink();
@@ -157,7 +185,8 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
               final merchant = entry.value;
               return Column(
                 children: [
-                  if (index > 0) const Divider(height: 1, indent: 16, endIndent: 16),
+                  if (index > 0)
+                    const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     dense: true,
                     leading: Container(
@@ -167,13 +196,15 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
                         color: AppTheme.surfaceSubtle,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: merchant['image'] != null && merchant['image'].toString().isNotEmpty
+                      child:
+                          merchant['image'] != null &&
+                              merchant['image'].toString().isNotEmpty
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
                                 merchant['image'].toString(),
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, _, _) => const Icon(
                                   Icons.store_rounded,
                                   size: 20,
                                   color: AppTheme.textMuted,
@@ -201,12 +232,18 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
                         color: AppTheme.textSecondary,
                       ),
                     ),
-                    trailing: merchant['highlightTag'] != null &&
+                    trailing:
+                        merchant['highlightTag'] != null &&
                             merchant['highlightTag'].toString().isNotEmpty
                         ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppTheme.savingsGreen.withValues(alpha: 0.1),
+                              color: AppTheme.savingsGreen.withValues(
+                                alpha: 0.1,
+                              ),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: AppTheme.savingsGreen),
                             ),
@@ -224,7 +261,7 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
                   ),
                 ],
               );
-            }).toList(),
+            }),
           ],
           // PLACES group
           if (_placesLoading)
@@ -241,7 +278,8 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
               ),
             )
           else if (_placeSuggestions.isNotEmpty) ...[
-            if (suggestions.isNotEmpty) const Divider(height: 1, indent: 16, endIndent: 16),
+            if (suggestions.isNotEmpty)
+              const Divider(height: 1, indent: 16, endIndent: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Text(
@@ -259,7 +297,8 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
               final place = entry.value;
               return Column(
                 children: [
-                  if (index > 0 || suggestions.isNotEmpty) const Divider(height: 1, indent: 16, endIndent: 16),
+                  if (index > 0 || suggestions.isNotEmpty)
+                    const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     dense: true,
                     leading: Container(
@@ -296,7 +335,7 @@ class _MapSearchOverlayState extends State<MapSearchOverlay> {
                   ),
                 ],
               );
-            }).toList(),
+            }),
           ],
         ],
       ),

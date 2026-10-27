@@ -6,13 +6,18 @@ abstract class RedemptionRepository {
   /// Initialise a redemption session for [offerId].
   /// Returns a [RedemptionEntity] with the redemption code that the staff
   /// will scan / verify.
-  Future<Either<Failure, RedemptionEntity>> initRedemption(String offerId);
+  Future<Either<Failure, RedemptionEntity>> initRedemption(
+    String offerId, {
+    String? branchId,
+  });
 
   /// Fetch the authenticated user's redemption history.
   /// Optionally filter by [offerId] to get redemptions for a specific offer.
-  Future<Either<Failure, List<RedemptionEntity>>> getMyRedemptions({String? offerId});
+  Future<Either<Failure, List<RedemptionEntity>>> getMyRedemptions({
+    String? offerId,
+  });
 
   /// Cancel a redemption session by [sessionId].
-  /// Only allowed for INIT status sessions owned by the user.
+  /// Only allowed for INIT or PENDING_SYNC sessions owned by the user.
   Future<Either<Failure, void>> cancelRedemption(String sessionId);
 }

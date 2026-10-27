@@ -5,15 +5,19 @@ sealed class RedemptionEvent {
 /// Trigger: user taps "Redeem Now" on an offer detail page.
 final class InitRedemptionRequested extends RedemptionEvent {
   final String offerId;
-  const InitRedemptionRequested(this.offerId);
+  final String? branchId;
+
+  const InitRedemptionRequested(this.offerId, {this.branchId});
 }
 
 /// Trigger: user opens their redemption history / "My Savings" tab.
 final class FetchMyRedemptionsRequested extends RedemptionEvent {
-  const FetchMyRedemptionsRequested();
+  final String? offerId;
+
+  const FetchMyRedemptionsRequested({this.offerId});
 }
 
-/// Trigger: user cancels their own redemption (INIT status only).
+/// Trigger: user cancels their own INIT or PENDING_SYNC redemption.
 final class CancelRedemptionRequested extends RedemptionEvent {
   final String sessionId;
   const CancelRedemptionRequested(this.sessionId);

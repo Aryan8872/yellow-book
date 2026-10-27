@@ -120,7 +120,7 @@ class _FavouritesView extends StatelessWidget {
                         return ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
                           itemCount: state.favourites.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             return _FavouriteOfferCard(offer: state.favourites[index]);
                           },
@@ -227,7 +227,7 @@ class _FavouriteOfferCard extends StatelessWidget {
                 width: 100, height: 100,
                 child: imageUrl != null
                     ? CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(color: AppTheme.surfaceSubtle,
+                        errorWidget: (_, _, _) => Container(color: AppTheme.surfaceSubtle,
                           child: const Icon(Icons.local_offer_rounded, color: AppTheme.textMuted)))
                     : Container(color: AppTheme.surfaceSubtle,
                         child: const Icon(Icons.local_offer_rounded, color: AppTheme.textMuted)),

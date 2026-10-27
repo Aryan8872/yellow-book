@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:entertainer/core/network/api_endpoints.dart';
+import 'package:injectable/injectable.dart';
+
 import '../../../domain/entities/review_entity.dart';
 
 abstract class ReviewRemoteDatasource {
@@ -27,7 +28,8 @@ abstract class ReviewRemoteDatasource {
     List<String>? photos,
   });
 
-  Future<ReviewEntity> updateReview(String id, {
+  Future<ReviewEntity> updateReview(
+    String id, {
     int? rating,
     String? title,
     String? comment,
@@ -43,6 +45,7 @@ abstract class ReviewRemoteDatasource {
   Future<void> reportReview(String reviewId, String reason, String? comment);
 }
 
+@LazySingleton(as: ReviewRemoteDatasource)
 class ReviewRemoteDataSourceImpl implements ReviewRemoteDatasource {
   final Dio dio;
 
@@ -59,19 +62,16 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDatasource {
     int limit = 20,
   }) async {
     final queryParams = <String, dynamic>{
-      if (offerId != null) 'offerId': offerId,
-      if (merchantId != null) 'merchantId': merchantId,
-      if (rating != null) 'rating': rating,
-      if (status != null) 'status': status,
-      if (sortBy != null) 'sortBy': sortBy,
+      'offerId': ?offerId,
+      'merchantId': ?merchantId,
+      'rating': ?rating,
+      'status': ?status,
+      'sortBy': ?sortBy,
       'page': page,
       'limit': limit,
     };
 
-    final response = await dio.get(
-      '/reviews',
-      queryParameters: queryParams,
-    );
+    final response = await dio.get('/reviews', queryParameters: queryParams);
 
     final raw = response.data;
     Map<String, dynamic> dataMap = {};
@@ -84,7 +84,9 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDatasource {
     }
 
     final reviewsData = dataMap['data'] as List<dynamic>? ?? [];
-    return reviewsData.map((json) => ReviewEntity.fromJson(json as Map<String, dynamic>)).toList();
+    return reviewsData
+        .map((json) => ReviewEntity.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
 
   @override
@@ -93,8 +95,8 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDatasource {
     String? merchantId,
   }) async {
     final queryParams = <String, dynamic>{
-      if (offerId != null) 'offerId': offerId,
-      if (merchantId != null) 'merchantId': merchantId,
+      'offerId': ?offerId,
+      'merchantId': ?merchantId,
     };
 
     final response = await dio.get(
@@ -127,12 +129,12 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDatasource {
     final response = await dio.post(
       '/reviews',
       data: {
-        if (offerId != null) 'offerId': offerId,
-        if (merchantId != null) 'merchantId': merchantId,
+        'offerId': ?offerId,
+        'merchantId': ?merchantId,
         'rating': rating,
-        if (title != null) 'title': title,
+        'title': ?title,
         'comment': comment,
-        if (photos != null) 'photos': photos,
+        'photos': ?photos,
       },
     );
 
@@ -150,7 +152,8 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDatasource {
   }
 
   @override
-  Future<ReviewEntity> updateReview(String id, {
+  Future<ReviewEntity> updateReview(
+    String id, {
     int? rating,
     String? title,
     String? comment,
@@ -159,10 +162,10 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDatasource {
     final response = await dio.put(
       '/reviews/$id',
       data: {
-        if (rating != null) 'rating': rating,
-        if (title != null) 'title': title,
-        if (comment != null) 'comment': comment,
-        if (photos != null) 'photos': photos,
+        'rating': ?rating,
+        'title': ?title,
+        'comment': ?comment,
+        'photos': ?photos,
       },
     );
 
@@ -215,13 +218,14 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDatasource {
   }
 
   @override
-  Future<void> reportReview(String reviewId, String reason, String? comment) async {
+  Future<void> reportReview(
+    String reviewId,
+    String reason,
+    String? comment,
+  ) async {
     await dio.post(
       '/reviews/$reviewId/report',
-      data: {
-        'reason': reason,
-        if (comment != null) 'comment': comment,
-      },
+      data: {'reason': reason, 'comment': ?comment},
     );
   }
 }

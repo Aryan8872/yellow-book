@@ -1,7 +1,13 @@
 import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:entertainer/core/di/service_loader.dart';
+import 'package:entertainer/core/network/upload_remote_datasource.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_event.dart';
@@ -18,8 +24,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  String _selectedCountryCode = '+977';
+  final ImagePicker _picker = ImagePicker();
   String? _avatarImagePath;
+  String? _existingAvatarUrl;
+  bool _isUploadingAvatar = false;
+  String? _saveError;
 
   @override
   void initState() {
@@ -27,7 +36,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final state = context.read<AuthBloc>().state;
     if (state is AuthAuthenticated) {
       _nameController.text = state.user.name;
-      _phoneController.text = state.user.phone ?? '';
+      _existingAvatarUrl = state.user.avatarUrl;
+      final phone = state.user.phone.trim();
+      _phoneController.text = phone.startsWith('+977')
+          ? phone.substring(4).trim()
+          : phone;
     }
   }
 
@@ -39,27 +52,67 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _pickImage() async {
-    // TODO: Implement image picker using image_picker package
-    // final ImagePicker picker = ImagePicker();
-    // final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    // if (image != null) {
-    //   setState(() {
-    //     _avatarImagePath = image.path;
-    //   });
-    // }
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        setState(() {
+          _avatarImagePath = image.path;
+          _saveError = null;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to pick image: $e'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
+    }
   }
 
-  void _saveProfile() {
-    if (_formKey.currentState!.validate()) {
-      // TODO: Upload avatar image if selected
-      context.read<AuthBloc>().add(
-            UpdateProfileRequested(
-              name: _nameController.text.trim(),
-              phone: '$_selectedCountryCode ${_phoneController.text.trim()}',
-              // avatarUrl: _avatarImagePath, // Upload and get URL
-            ),
-          );
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    String? avatarUrl = _existingAvatarUrl;
+
+    if (_avatarImagePath != null) {
+      setState(() {
+        _isUploadingAvatar = true;
+        _saveError = null;
+      });
+
+      try {
+        final uploader = UploadRemoteDatasource(getIt<Dio>());
+        avatarUrl = await uploader.uploadImage(
+          File(_avatarImagePath!),
+          folder: 'avatars',
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isUploadingAvatar = false;
+          _saveError = 'Failed to upload avatar: $e';
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() => _isUploadingAvatar = false);
     }
+
+    context.read<AuthBloc>().add(
+      UpdateProfileRequested(
+        name: _nameController.text.trim(),
+        phone: '+977${_phoneController.text.trim()}',
+        avatarUrl: avatarUrl,
+      ),
+    );
   }
 
   @override
@@ -70,7 +123,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppTheme.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -94,10 +150,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             );
             Navigator.pop(context, true);
+          } else if (state is AuthProfileUpdateFailure) {
+            setState(() => _saveError = state.message);
+          } else if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            Navigator.of(context).maybePop();
           }
         },
         builder: (context, state) {
-          final isLoading = state is AuthLoading;
+          final isLoading =
+              state is AuthLoading || state is AuthProfileUpdating;
 
           return Form(
             key: _formKey,
@@ -116,16 +183,45 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           decoration: BoxDecoration(
                             color: AppTheme.surfaceSubtle,
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.borderSubtle, width: 2),
+                            border: Border.all(
+                              color: AppTheme.borderSubtle,
+                              width: 2,
+                            ),
                           ),
-                          child: _avatarImagePath != null
+                          child: _isUploadingAvatar
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                                  ),
+                                )
+                              : _avatarImagePath != null
                               ? ClipOval(
                                   child: Image.file(
                                     File(_avatarImagePath!),
                                     width: 100,
                                     height: 100,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(
+                                    errorBuilder: (_, _, _) => const Icon(
+                                      Icons.person_rounded,
+                                      size: 48,
+                                      color: AppTheme.textMuted,
+                                    ),
+                                  ),
+                                )
+                              : _existingAvatarUrl != null &&
+                                      _existingAvatarUrl!.isNotEmpty
+                              ? ClipOval(
+                                  child: CachedNetworkImage(
+                                    imageUrl: _existingAvatarUrl!,
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, _) => const Center(
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                    errorWidget: (_, _, _) => const Icon(
                                       Icons.person_rounded,
                                       size: 48,
                                       color: AppTheme.textMuted,
@@ -173,6 +269,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 TextFormField(
                   controller: _nameController,
                   enabled: !isLoading,
+                  onChanged: (_) {
+                    if (_saveError != null) {
+                      setState(() => _saveError = null);
+                    }
+                  },
                   decoration: InputDecoration(
                     hintText: 'Enter your full name',
                     filled: true,
@@ -181,7 +282,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -207,36 +311,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    // Country Code Dropdown
+                    // Profile phone numbers are normalized to Nepal's country code.
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.cardSurface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppTheme.borderSubtle),
                       ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedCountryCode,
-                          items: const [
-                            DropdownMenuItem(value: '+977', child: Text('🇳🇵 +977')),
-                            DropdownMenuItem(value: '+1', child: Text('🇺🇸 +1')),
-                            DropdownMenuItem(value: '+91', child: Text('🇮🇳 +91')),
-                            DropdownMenuItem(value: '+44', child: Text('🇬🇧 +44')),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedCountryCode = value;
-                              });
-                            }
-                          },
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary,
-                          ),
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                      child: Text(
+                        '+977',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
                     ),
@@ -247,6 +338,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         controller: _phoneController,
                         enabled: !isLoading,
                         keyboardType: TextInputType.phone,
+                        onChanged: (_) {
+                          if (_saveError != null) {
+                            setState(() => _saveError = null);
+                          }
+                        },
                         decoration: InputDecoration(
                           hintText: 'Enter phone number',
                           filled: true,
@@ -255,13 +351,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter phone number';
                           }
-                          if (value.trim().length < 7) {
+                          final localPhone = value.trim().replaceAll(
+                            RegExp(r'[\s()-]'),
+                            '',
+                          );
+                          if (!RegExp(r'^9\d{9}$').hasMatch(localPhone)) {
                             return 'Please enter a valid phone number';
                           }
                           return null;
@@ -299,6 +402,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 // const SizedBox(height: 32),
 
                 // Save Button
+                if (_saveError != null) ...[
+                  Semantics(
+                    liveRegion: true,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        _saveError!,
+                        style: TextStyle(
+                          color: Colors.red.shade700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -317,7 +435,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : Text(

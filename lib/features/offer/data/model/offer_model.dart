@@ -138,6 +138,7 @@ class OfferModel {
   final DateTime? validFrom;
   final DateTime? validUntil;
   final MerchantDetailModel? merchant;
+  final List<MerchantBranchModel> branches;
 
   const OfferModel({
     this.id,
@@ -164,6 +165,7 @@ class OfferModel {
     this.validFrom,
     this.validUntil,
     this.merchant,
+    this.branches = const [],
   });
 
   factory OfferModel.fromJson(Map<String, dynamic> json) {
@@ -185,20 +187,34 @@ class OfferModel {
         ? rawHighlights.map((e) => e.toString()).toList()
         : [];
 
+    final rawBranches = json['branches'] as List<dynamic>?;
+    final List<MerchantBranchModel> parsedBranches = rawBranches != null
+        ? rawBranches
+            .whereType<Map<String, dynamic>>()
+            .map((b) => MerchantBranchModel.fromJson(b))
+            .toList()
+        : [];
+
     return OfferModel(
       id: json['id']?.toString() ?? json['_id']?.toString(),
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       terms: json['terms']?.toString() ?? '',
-      categoryId: json['categoryId']?.toString() ?? categoryMap?['id']?.toString(),
-      categoryName: json['categoryName']?.toString() ?? categoryMap?['name']?.toString(),
-      merchantId: json['merchantId']?.toString() ?? merchantMap?['id']?.toString(),
-      merchantName: json['merchantName']?.toString() ?? merchantMap?['name']?.toString(),
+      categoryId:
+          json['categoryId']?.toString() ?? categoryMap?['id']?.toString(),
+      categoryName:
+          json['categoryName']?.toString() ?? categoryMap?['name']?.toString(),
+      merchantId:
+          json['merchantId']?.toString() ?? merchantMap?['id']?.toString(),
+      merchantName:
+          json['merchantName']?.toString() ?? merchantMap?['name']?.toString(),
       estimatedSavingsNpr: (json['estimatedSavingsNpr'] as num?)?.toInt() ?? 0,
       originalPriceNpr: (json['originalPriceNpr'] as num?)?.toInt(),
       discountedPriceNpr: (json['discountedPriceNpr'] as num?)?.toInt(),
       discountPercentage: (json['discountPercentage'] as num?)?.toInt(),
-      imageUrl: json['imageUrl']?.toString() ?? (parsedImages.isNotEmpty ? parsedImages.first : null),
+      imageUrl:
+          json['imageUrl']?.toString() ??
+          (parsedImages.isNotEmpty ? parsedImages.first : null),
       images: parsedImages,
       highlights: parsedHighlights,
       rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
@@ -209,9 +225,16 @@ class OfferModel {
       availabilityJson: json['availabilityJson'] is Map<String, dynamic>
           ? json['availabilityJson'] as Map<String, dynamic>
           : null,
-      validFrom: json['validFrom'] != null ? DateTime.tryParse(json['validFrom'].toString()) : null,
-      validUntil: json['validUntil'] != null ? DateTime.tryParse(json['validUntil'].toString()) : null,
-      merchant: merchantMap != null ? MerchantDetailModel.fromJson(merchantMap) : null,
+      validFrom: json['validFrom'] != null
+          ? DateTime.tryParse(json['validFrom'].toString())
+          : null,
+      validUntil: json['validUntil'] != null
+          ? DateTime.tryParse(json['validUntil'].toString())
+          : null,
+      merchant: merchantMap != null
+          ? MerchantDetailModel.fromJson(merchantMap)
+          : null,
+      branches: parsedBranches,
     );
   }
 
@@ -250,7 +273,10 @@ class OfferModel {
       title: title,
       description: description,
       terms: terms,
-      category: categoryName != null ? OfferCategory.fromString(categoryName!) : OfferCategory.dining,
+      category: categoryName != null
+          ? OfferCategory.fromString(categoryName!)
+          : OfferCategory.dining,
+      categoryId: categoryId,
       merchantId: merchantId,
       merchantName: merchantName,
       estimatedSavingsNpr: estimatedSavingsNpr,
@@ -269,6 +295,7 @@ class OfferModel {
       validFrom: validFrom,
       validUntil: validUntil,
       merchant: merchant?.toEntity(),
+      branches: branches.map((b) => b.toEntity()).toList(),
     );
   }
 

@@ -3,7 +3,7 @@ import 'package:entertainer/core/network/api_endpoints.dart';
 import 'package:entertainer/features/offer/data/model/redemption_model.dart';
 
 abstract class RedemptionRemoteDatasource {
-  Future<RedemptionModel> initRedemption(String offerId);
+  Future<RedemptionModel> initRedemption(String offerId, {String? branchId});
   Future<List<RedemptionModel>> getMyRedemptions({String? offerId});
   Future<void> cancelRedemption(String sessionId);
 }
@@ -14,8 +14,11 @@ class RedemptionRemoteDatasourceImpl implements RedemptionRemoteDatasource {
   RedemptionRemoteDatasourceImpl(this.dio);
 
   @override
-  Future<RedemptionModel> initRedemption(String offerId) async {
-    final response = await dio.post(ApiEndpoints.redeemInit(offerId));
+  Future<RedemptionModel> initRedemption(String offerId, {String? branchId}) async {
+    final response = await dio.post(
+      ApiEndpoints.redeemInit(offerId),
+      data: branchId != null ? {'branchId': branchId} : null,
+    );
     final raw = response.data;
 
     // Unwrap NestJS envelope

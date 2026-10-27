@@ -66,6 +66,7 @@ class OfferEntity {
   final String description;
   final String terms;
   final OfferCategory category;
+  final String? categoryId;
   final String? merchantId;
   final String? merchantName;
   final int estimatedSavingsNpr;
@@ -84,6 +85,7 @@ class OfferEntity {
   final DateTime? validFrom;
   final DateTime? validUntil;
   final MerchantDetailEntity? merchant;
+  final List<MerchantBranchEntity> branches;
 
   const OfferEntity({
     this.id,
@@ -91,6 +93,7 @@ class OfferEntity {
     required this.description,
     required this.terms,
     required this.category,
+    this.categoryId,
     this.merchantId,
     this.merchantName,
     this.estimatedSavingsNpr = 0,
@@ -109,11 +112,13 @@ class OfferEntity {
     this.validFrom,
     this.validUntil,
     this.merchant,
+    this.branches = const [],
   });
 
   /// Map representation for backward compatibility with old widgets
   Map<String, String> toLegacyMap() {
-    final branch = merchant?.branches.isNotEmpty == true ? merchant!.branches.first : null;
+    final effectiveBranches = branches.isNotEmpty ? branches : (merchant?.branches ?? const []);
+    final branch = effectiveBranches.isNotEmpty ? effectiveBranches.first : null;
     return {
       'id': id ?? '',
       'hotelName': merchantName ?? merchant?.name ?? 'Merchant',
@@ -126,18 +131,39 @@ class OfferEntity {
       'highlightTag': discountPercentage != null && discountPercentage! > 0
           ? '$discountPercentage% OFF'
           : 'BOGOF',
-      'image': imageUrl ?? (images.isNotEmpty ? images.first : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80'),
-      'expiryDate': validUntil != null ? '${validUntil!.day} ${_monthName(validUntil!.month)} ${validUntil!.year}' : '31 Dec 2026',
+      'image':
+          imageUrl ??
+          (images.isNotEmpty
+              ? images.first
+              : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80'),
+      'expiryDate': validUntil != null
+          ? '${validUntil!.day} ${_monthName(validUntil!.month)} ${validUntil!.year}'
+          : '31 Dec 2026',
       'estimatedSavings': 'Save NPR $estimatedSavingsNpr',
       'originalPrice': originalPriceNpr != null ? 'NPR $originalPriceNpr' : '',
-      'discountedPrice': discountedPriceNpr != null ? 'NPR $discountedPriceNpr' : '',
+      'discountedPrice': discountedPriceNpr != null
+          ? 'NPR $discountedPriceNpr'
+          : '',
       'rating': rating.toStringAsFixed(1),
       'reviewsCount': reviewsCount.toString(),
     };
   }
 
   static String _monthName(int month) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     if (month >= 1 && month <= 12) return months[month - 1];
     return '';
   }

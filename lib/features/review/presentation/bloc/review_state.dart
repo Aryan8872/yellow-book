@@ -1,3 +1,5 @@
+import 'package:entertainer/features/review/domain/entities/review_entity.dart';
+
 sealed class ReviewState {
   const ReviewState();
 }

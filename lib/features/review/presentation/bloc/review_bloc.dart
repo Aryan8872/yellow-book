@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:entertainer/features/review/domain/entities/review_entity.dart';
 import 'package:entertainer/features/review/domain/repositories/review_repository.dart';
+
 import 'review_event.dart';
 import 'review_state.dart';
 
@@ -23,7 +25,12 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     FetchReviewsRequested event,
     Emitter<ReviewState> emit,
   ) async {
-    emit(const ReviewLoading());
+    final previousReviews = state is ReviewsLoaded
+        ? (state as ReviewsLoaded).reviews
+        : const <ReviewEntity>[];
+    if (previousReviews.isEmpty) {
+      emit(const ReviewLoading());
+    }
     final result = await repository.getReviews(
       offerId: event.offerId,
       merchantId: event.merchantId,
@@ -34,12 +41,28 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
       limit: event.limit,
     );
     result.fold(
-      (failure) => emit(ReviewError(failure.message)),
-      (reviews) => emit(ReviewsLoaded(
-        reviews: reviews,
-        page: event.page,
-        hasMore: reviews.length >= event.limit,
-      )),
+      (failure) {
+        if (previousReviews.isNotEmpty) {
+          // Keep showing existing reviews while still notifying via error state
+          emit(ReviewError(failure.message));
+          emit(
+            ReviewsLoaded(
+              reviews: previousReviews,
+              page: event.page > 1 ? event.page - 1 : 1,
+              hasMore: false,
+            ),
+          );
+        } else {
+          emit(ReviewError(failure.message));
+        }
+      },
+      (reviews) => emit(
+        ReviewsLoaded(
+          reviews: event.page > 1 ? [...previousReviews, ...reviews] : reviews,
+          page: event.page,
+          hasMore: reviews.length >= event.limit,
+        ),
+      ),
     );
   }
 
@@ -111,9 +134,15 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     MarkHelpfulRequested event,
     Emitter<ReviewState> emit,
   ) async {
+    final previousState = state;
     final result = await repository.markHelpful(event.reviewId);
     result.fold(
-      (failure) => emit(ReviewError(failure.message)),
+      (failure) {
+        emit(ReviewError(failure.message));
+        if (previousState is ReviewsLoaded) {
+          emit(previousState);
+        }
+      },
       (review) => emit(ReviewHelpfulMarked(review)),
     );
   }
@@ -122,9 +151,15 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     RemoveHelpfulRequested event,
     Emitter<ReviewState> emit,
   ) async {
+    final previousState = state;
     final result = await repository.removeHelpful(event.reviewId);
     result.fold(
-      (failure) => emit(ReviewError(failure.message)),
+      (failure) {
+        emit(ReviewError(failure.message));
+        if (previousState is ReviewsLoaded) {
+          emit(previousState);
+        }
+      },
       (review) => emit(ReviewHelpfulRemoved(review)),
     );
   }
@@ -133,13 +168,19 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     ReportReviewRequested event,
     Emitter<ReviewState> emit,
   ) async {
+    final previousState = state;
     final result = await repository.reportReview(
       event.reviewId,
       event.reason,
       event.comment,
     );
     result.fold(
-      (failure) => emit(ReviewError(failure.message)),
+      (failure) {
+        emit(ReviewError(failure.message));
+        if (previousState is ReviewsLoaded) {
+          emit(previousState);
+        }
+      },
       (_) => emit(const ReviewReported()),
     );
   }

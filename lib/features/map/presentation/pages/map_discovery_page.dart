@@ -1,6 +1,9 @@
-import 'dart:typed_data';
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/di/service_loader.dart';
@@ -8,42 +11,81 @@ import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/core/config/map_config.dart';
 import 'package:entertainer/features/map/presentation/widgets/offer_map_drawer.dart';
 import 'package:entertainer/features/map/presentation/widgets/map_search_overlay.dart';
+import 'package:entertainer/features/offer/data/datasource/places_remote_datasource.dart';
+import 'package:entertainer/features/map/presentation/widgets/category_map_marker_factory.dart';
+import 'package:entertainer/features/map/presentation/widgets/offer_map_clusterer.dart';
+import 'package:entertainer/features/map/presentation/widgets/map_filters_sheet.dart';
+
 import '../bloc/map_bloc.dart';
 import '../bloc/map_event.dart';
 import '../bloc/map_state.dart';
-import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
-import 'package:entertainer/features/offer/presentation/pages/offer_detail_page.dart';
 
 class MapDiscoveryPage extends StatelessWidget {
   final ({double lat, double lng, String? title})? initialBranch;
+  final ({double lat, double lng, String label})? initialLocation;
+  final bool locationPicker;
 
-  const MapDiscoveryPage({super.key, this.initialBranch});
+  const MapDiscoveryPage({
+    super.key,
+    this.initialBranch,
+    this.initialLocation,
+    this.locationPicker = false,
+  });
+
+  static LatLng initialCameraTarget(
+    MapLoadedState state,
+    ({double lat, double lng, String? title})? initialBranch,
+  ) {
+    if (initialBranch != null) {
+      return LatLng(initialBranch.lat, initialBranch.lng);
+    }
+    return state.browseLocation ??
+        state.userLocation ??
+        const LatLng(MapConfig.defaultLatitude, MapConfig.defaultLongitude);
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) {
         final bloc = getIt<MapBloc>();
-        bloc.add(const MapInitialLoadRequested());
-        if (initialBranch != null) {
-          bloc.add(MapFocusBranchRequested(
-            lat: initialBranch!.lat,
-            lng: initialBranch!.lng,
-            title: initialBranch!.title,
-          ));
-        }
+        final browseLocation =
+            initialLocation ??
+            (initialBranch == null
+                ? null
+                : (
+                    lat: initialBranch!.lat,
+                    lng: initialBranch!.lng,
+                    label: initialBranch!.title ?? 'Branch location',
+                  ));
+        bloc.add(
+          MapInitialLoadRequested(
+            latitude: browseLocation?.lat,
+            longitude: browseLocation?.lng,
+            locationLabel: browseLocation?.label,
+          ),
+        );
         return bloc;
       },
-      child: _MapDiscoveryView(initialBranch: initialBranch),
+      child: _MapDiscoveryView(
+        initialBranch: initialBranch,
+        initialLocation: initialLocation,
+        locationPicker: locationPicker,
+      ),
     );
   }
 }
 
-
 class _MapDiscoveryView extends StatefulWidget {
   final ({double lat, double lng, String? title})? initialBranch;
+  final ({double lat, double lng, String label})? initialLocation;
+  final bool locationPicker;
 
-  const _MapDiscoveryView({this.initialBranch});
+  const _MapDiscoveryView({
+    this.initialBranch,
+    this.initialLocation,
+    required this.locationPicker,
+  });
 
   @override
   State<_MapDiscoveryView> createState() => _MapDiscoveryViewState();
@@ -53,10 +95,19 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   MapLibreMapController? _mapController;
+  bool _styleLoaded = false;
+  int _markerRenderId = 0;
+  bool _pendingRecenter = false;
+  String? _lastOffersError;
+  String? _lastLocationError;
+  int _lastLocationRevision = 0;
+  bool _branchFocusInitialized = false;
+  LatLng? _pickerTarget;
 
   // Offer drawer state (slide-in panel on pin tap)
   bool _isDrawerOpen = false;
   Map<String, dynamic>? _drawerMerchant;
+  final Map<String, Map<String, dynamic>> _symbolPayloads = {};
 
   final List<String> _categories = [
     'All',
@@ -113,12 +164,13 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
       vsync: this,
       duration: const Duration(milliseconds: 320),
     );
-    _menuSlideAnimation = Tween<Offset>(
-      begin: const Offset(-1.0, 0.0),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _menuAnimController, curve: Curves.easeOutCubic),
-    );
+    _menuSlideAnimation =
+        Tween<Offset>(begin: const Offset(-1.0, 0.0), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _menuAnimController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
     _menuFadeAnimation = CurvedAnimation(
       parent: _menuAnimController,
       curve: Curves.easeOut,
@@ -148,66 +200,162 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
     });
   }
 
+  Future<void> _confirmMapLocation(MapLoadedState state) async {
+    final coordinate =
+        _pickerTarget ??
+        _mapController?.cameraPosition?.target ??
+        state.browseLocation;
+    if (coordinate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose a location on the map first.')),
+      );
+      return;
+    }
+    final reverse = await PlacesRemoteDataSource().reverse(
+      lat: coordinate.latitude,
+      lon: coordinate.longitude,
+    );
+    if (!mounted) return;
+    final name = reverse.isNotEmpty
+        ? reverse.first.name
+        : '${coordinate.latitude.toStringAsFixed(5)}, ${coordinate.longitude.toStringAsFixed(5)}';
+    Navigator.of(context).pop(
+      PlaceSuggestion(
+        formatted: name,
+        name: name,
+        lat: coordinate.latitude,
+        lon: coordinate.longitude,
+        confidence: 1,
+      ),
+    );
+  }
 
-  void _addMarkers(MapLoadedState state) {
-    if (_mapController == null) return;
-    _mapController!.clearSymbols();
-    for (final merchant in state.merchants) {
-      final lat = merchant['lat'] as double?;
-      final lng = merchant['lng'] as double?;
-      if (lat == null || lng == null) continue;
-      _mapController!.addSymbol(
+  Future<void> _addMarkers(MapLoadedState state) async {
+    final controller = _mapController;
+    if (controller == null || !_styleLoaded) return;
+    final renderId = ++_markerRenderId;
+    final zoom = controller.cameraPosition?.zoom ?? MapConfig.defaultZoom;
+    final clusters = OfferMapClusterer.cluster(state.merchants, zoom: zoom);
+
+    await controller.clearSymbols();
+    _symbolPayloads.clear();
+    if (renderId != _markerRenderId) return;
+
+    for (final cluster in clusters) {
+      final merchant = cluster.offers.first;
+      final isCluster = cluster.isCluster;
+      final imageId = isCluster
+          ? CategoryMapMarkerFactory.clusterImageId
+          : CategoryMapMarkerFactory.imageIdFor(cluster.categorySlug);
+
+      // Only primitive/serializable values in the MapLibre GeoJSON property map!
+      // Any custom Dart objects (OfferEntity, MerchantBranchEntity) cause jsonEncode to crash.
+      final symbol = await controller.addSymbol(
         SymbolOptions(
-          geometry: LatLng(lat, lng),
-          iconImage: 'map_pin', // registered after style load
-          iconSize: 0.10,
+          geometry: LatLng(cluster.latitude, cluster.longitude),
+          iconImage: imageId,
+          iconSize: isCluster ? 0.55 : 0.45,
+          iconAnchor: isCluster ? 'center' : 'bottom',
+          textField: isCluster
+              ? '${cluster.offers.length}'
+              : merchant['hotelName'] as String? ?? '',
+          textOffset: isCluster ? Offset.zero : const Offset(0, 1.5),
+          textSize: isCluster ? 13 : 11,
+          textColor: isCluster ? '#FFFFFF' : '#1A1A2E',
+          textHaloColor: '#FFFFFF',
+          textHaloWidth: isCluster ? 0 : 1.5,
+        ),
+        <String, dynamic>{
+          'isCluster': isCluster,
+          'clusterCount': cluster.offers.length,
+          'lat': cluster.latitude,
+          'lng': cluster.longitude,
+          'hotelName': merchant['hotelName'] as String? ?? '',
+          'categorySlug': cluster.categorySlug ?? '',
+          'pinId': merchant['pinId'] as String? ?? merchant['id'] as String? ?? '',
+        },
+      );
+
+      // Cache full rich in-memory metadata keyed by symbol ID and pinId
+      _symbolPayloads[symbol.id] = {
+        'isCluster': isCluster,
+        'clusterCount': cluster.offers.length,
+        'offers': cluster.offers,
+        'merchant': isCluster ? null : merchant,
+        'lat': cluster.latitude,
+        'lng': cluster.longitude,
+      };
+
+      if (renderId != _markerRenderId) return;
+    }
+
+    final browseLocation = state.browseLocation;
+    final userLocation = state.userLocation;
+    final sameAsGps =
+        browseLocation != null &&
+        userLocation != null &&
+        _distanceKm(browseLocation, userLocation) < 0.02;
+    if (browseLocation != null && !sameAsGps) {
+      await controller.addSymbol(
+        SymbolOptions(
+          geometry: browseLocation,
+          iconImage: CategoryMapMarkerFactory.locationImageId,
+          iconSize: 0.5,
           iconAnchor: 'bottom',
-          textField: merchant['hotelName'] as String? ?? '',
+          textField: state.browseLocationLabel ?? 'Selected location',
           textOffset: const Offset(0, 1.5),
           textSize: 11,
           textColor: '#1A1A2E',
           textHaloColor: '#FFFFFF',
           textHaloWidth: 1.5,
         ),
-        {'merchant': merchant},
+        {'isBrowseLocation': true},
       );
     }
   }
 
   Future<void> _onStyleLoaded(MapLoadedState state) async {
-    if (_mapController == null) return;
-    // Register the pin image
-    final imageBytes = await _loadAssetBytes('assets/images/map_pin.png');
-    if (imageBytes != null) {
-      await _mapController!.addImage('map_pin', imageBytes);
-    } else {
-      // Failed to load map pin asset
-    }
-    _addMarkers(state);
-    // Symbol tap handler
-    _mapController!.onSymbolTapped.add((symbol) {
-      final merchant = symbol.data?['merchant'] as Map<String, dynamic>?;
-      if (merchant != null) {
-        // Fly-to with slight north offset so drawer doesn't cover pin
-        final lat = merchant['lat'] as double?;
-        final lng = merchant['lng'] as double?;
-        if (lat != null && lng != null) {
-          _mapController!.animateCamera(
-            CameraUpdate.newLatLngZoom(LatLng(lat - 0.002, lng), 15.0),
-          );
-        }
-        if (mounted) setState(() { _isDrawerOpen = true; _drawerMerchant = merchant; });
-        context.read<MapBloc>().add(MapMerchantSelected(merchant));
-      }
-    });
+    final controller = _mapController;
+    if (controller == null) return;
+    await CategoryMapMarkerFactory.registerImages(controller);
+    _styleLoaded = true;
+    await _addMarkers(state);
   }
 
-  Future<Uint8List?> _loadAssetBytes(String assetPath) async {
-    try {
-      final data = await DefaultAssetBundle.of(context).load(assetPath);
-      return data.buffer.asUint8List();
-    } catch (_) {
-      return null;
+  Future<void> _onSymbolTapped(Symbol symbol) async {
+    final controller = _mapController;
+    // Prefer rich in-memory payload cached by symbol id; fall back to symbol.data
+    final data = _symbolPayloads[symbol.id] ?? symbol.data;
+    if (controller == null || data == null) return;
+
+    if (data['isCluster'] == true) {
+      final latitude = (data['lat'] as num).toDouble();
+      final longitude = (data['lng'] as num).toDouble();
+      final zoom = controller.cameraPosition?.zoom ?? MapConfig.defaultZoom;
+      await controller.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(latitude, longitude),
+          OfferMapClusterer.zoomForCluster(zoom),
+        ),
+      );
+      if (mounted) {
+        setState(() {
+          _isDrawerOpen = false;
+          _drawerMerchant = null;
+        });
+        context.read<MapBloc>().add(const MapCardDismissed());
+      }
+      return;
+    }
+
+    final merchant = data['merchant'] as Map<String, dynamic>?;
+    if (merchant == null) return;
+    if (mounted) {
+      setState(() {
+        _isDrawerOpen = true;
+        _drawerMerchant = merchant;
+      });
+      context.read<MapBloc>().add(MapMerchantSelected(merchant));
     }
   }
 
@@ -216,33 +364,100 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
     context.read<MapBloc>().add(const MapCardDismissed());
   }
 
-  List<Widget> _buildMarkerOverlays(MapLoadedState state, LatLng userLatLng) {
-    final overlays = <Widget>[];
+  Future<void> _refreshOffersForVisibleRegion() async {
+    if (widget.locationPicker) {
+      final target = _mapController?.cameraPosition?.target;
+      if (target != null && mounted) setState(() => _pickerTarget = target);
+      return;
+    }
+    final state = context.read<MapBloc>().state;
+    if (_styleLoaded && state is MapLoadedState) {
+      await _addMarkers(state);
+    }
+  }
 
-    // User location beacon - centered on screen for now
-    // In a full implementation, this would be positioned using toScreenLocation
-    overlays.add(
-      Positioned(
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 0,
-        child: IgnorePointer(
-          child: Center(
-            child: _UserBeacon(),
-          ),
-        ),
+  double _distanceKm(LatLng start, LatLng end) {
+    const earthRadiusKm = 6371.0;
+    final latitudeDelta = (end.latitude - start.latitude) * math.pi / 180;
+    final longitudeDelta = (end.longitude - start.longitude) * math.pi / 180;
+    final startLatitude = start.latitude * math.pi / 180;
+    final endLatitude = end.latitude * math.pi / 180;
+    final haversine =
+        math.pow(math.sin(latitudeDelta / 2), 2) +
+        math.cos(startLatitude) *
+            math.cos(endLatitude) *
+            math.pow(math.sin(longitudeDelta / 2), 2);
+    return 2 *
+        earthRadiusKm *
+        math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine));
+  }
+
+  Future<void> _openFilters(MapLoadedState state) async {
+    final selection = await showModalBottomSheet<MapFilterSelection>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.cardSurface,
+      builder: (_) => MapFiltersSheet(
+        category: state.activeCategory,
+        radiusKm: state.radiusKm,
+        minimumRating: state.minimumRating,
+        onlyOpenNow: state.onlyOpenNow,
       ),
     );
+    if (selection == null || !mounted) return;
+    final center =
+        _mapController?.cameraPosition?.target ??
+        state.browseLocation ??
+        state.userLocation ??
+        const LatLng(MapConfig.defaultLatitude, MapConfig.defaultLongitude);
+    context.read<MapBloc>().add(
+      MapFiltersApplied(
+        lat: center.latitude,
+        lng: center.longitude,
+        radiusKm: selection.radiusKm,
+        category: selection.category,
+        minimumRating: selection.minimumRating,
+        onlyOpenNow: selection.onlyOpenNow,
+      ),
+    );
+  }
 
-    // Note: Proper marker positioning with MapLibre requires using
-    // the controller's toScreenLocation method in a callback after
-    // the map is fully loaded. For now, we'll use Symbol annotations
-    // directly on the map for better performance and positioning.
-    // This is a simplified approach - the full implementation would
-    // use MapLibre's SymbolLayer for marker rendering.
+  void _selectOfferRecommendation(Map<String, dynamic> merchant) {
+    FocusScope.of(context).unfocus();
+    _searchController.clear();
+    final lat = merchant['lat'] as double?;
+    final lng = merchant['lng'] as double?;
+    if (lat == null || lng == null) return;
+    context.read<MapBloc>().add(const MapQueryChanged(''));
+    context.read<MapBloc>().add(MapMerchantSelected(merchant));
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(LatLng(lat, lng), 15),
+    );
+    setState(() {
+      _isDrawerOpen = true;
+      _drawerMerchant = merchant;
+    });
+  }
 
-    return overlays;
+  void _selectMapPlace(PlaceSuggestion place) {
+    FocusScope.of(context).unfocus();
+    _searchController.clear();
+    context.read<MapBloc>().add(const MapQueryChanged(''));
+    context.read<MapBloc>().add(
+      MapPlaceSelected(
+        latitude: place.lat,
+        longitude: place.lon,
+        label: place.formatted,
+      ),
+    );
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(LatLng(place.lat, place.lon), 15),
+    );
+    _pickerTarget = LatLng(place.lat, place.lon);
+    setState(() {
+      _isDrawerOpen = false;
+      _drawerMerchant = null;
+    });
   }
 
   @override
@@ -251,19 +466,45 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
       backgroundColor: AppTheme.canvasBg,
       body: BlocConsumer<MapBloc, MapState>(
         listener: (context, state) {
-          if (state is MapLoadedState && state.userLocation != null && _mapController != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                try {
-                  _mapController!.animateCamera(
-                    CameraUpdate.newLatLngZoom(
-                      LatLng(state.userLocation!.latitude, state.userLocation!.longitude),
-                      14.0,
-                    ),
-                  );
-                } catch (_) {}
+          if (state is MapLoadedState) {
+            if (widget.initialBranch != null && !_branchFocusInitialized) {
+              _branchFocusInitialized = true;
+              context.read<MapBloc>().add(
+                MapFocusBranchRequested(
+                  lat: widget.initialBranch!.lat,
+                  lng: widget.initialBranch!.lng,
+                  title: widget.initialBranch!.title,
+                ),
+              );
+            }
+            if (state.offersError != null &&
+                state.offersError != _lastOffersError) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(state.offersError!)));
+            }
+            _lastOffersError = state.offersError;
+            if (state.locationError != null &&
+                state.locationError != _lastLocationError) {
+              _showLocationIssue(context, state);
+            }
+            _lastLocationError = state.locationError;
+            if (_styleLoaded) {
+              unawaited(_addMarkers(state));
+            }
+            if (_pendingRecenter &&
+                state.locationRevision > _lastLocationRevision) {
+              _pendingRecenter = false;
+              final location = state.userLocation;
+              final controller = _mapController;
+              if (location != null && controller != null) {
+                unawaited(
+                  controller.animateCamera(
+                    CameraUpdate.newLatLngZoom(location, 15.0),
+                  ),
+                );
               }
-            });
+            }
+            _lastLocationRevision = state.locationRevision;
           }
         },
         builder: (context, state) {
@@ -278,6 +519,30 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
           }
           return _buildLoadingScreen();
         },
+      ),
+    );
+  }
+
+  void _showLocationIssue(BuildContext context, MapLoadedState state) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(state.locationError!),
+        action: SnackBarAction(
+          label: 'Settings',
+          onPressed: () async {
+            final opened = state.locationServicesEnabled
+                ? await Geolocator.openAppSettings()
+                : await Geolocator.openLocationSettings();
+            if (!opened && mounted) {
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Could not open location settings.'),
+                ),
+              );
+            }
+          },
+        ),
       ),
     );
   }
@@ -306,7 +571,7 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
             ),
             const SizedBox(height: 20),
             Text(
-              'Finding your location...',
+              'Loading map offers...',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -315,7 +580,7 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
             ),
             const SizedBox(height: 8),
             Text(
-              'Acquiring GPS signal',
+              'Your location is optional',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
@@ -422,18 +687,11 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
   }
 
   Widget _buildMapScreen(BuildContext context, MapLoadedState state) {
-    // Use initialBranch coordinates if provided, otherwise user location or default
-    LatLng targetLatLng;
-    double initialZoom = 14.0;
-    
-    if (widget.initialBranch != null) {
-      targetLatLng = LatLng(widget.initialBranch!.lat, widget.initialBranch!.lng);
-      initialZoom = 16.0; // Branch focus zoom level
-    } else {
-      targetLatLng = state.userLocation != null
-          ? LatLng(state.userLocation!.latitude, state.userLocation!.longitude)
-          : const LatLng(MapConfig.defaultLatitude, MapConfig.defaultLongitude);
-    }
+    final targetLatLng = MapDiscoveryPage.initialCameraTarget(
+      state,
+      widget.initialBranch,
+    );
+    final initialZoom = widget.initialBranch != null ? 16.0 : 14.0;
 
     // Check if map key is available
     if (!MapConfig.hasMapKey || MapConfig.styleUrl.isEmpty) {
@@ -458,20 +716,31 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
               northeast: const LatLng(30.5, 88.2),
             ),
           ),
-          myLocationEnabled: true,
+          myLocationEnabled:
+              state.locationPermissionGranted && state.userLocation != null,
           onMapCreated: (controller) {
             _mapController = controller;
+            controller.onSymbolTapped.add(
+              (symbol) => unawaited(_onSymbolTapped(symbol)),
+            );
           },
           onStyleLoadedCallback: () {
             final bloc = context.read<MapBloc>();
             final s = bloc.state;
             if (s is MapLoadedState) _onStyleLoaded(s);
           },
-          onMapClick: (_, __) => _closeDrawer(),
+          onCameraIdle: _refreshOffersForVisibleRegion,
+          onMapClick: (_, coordinates) {
+            if (widget.locationPicker) {
+              _pickerTarget = coordinates;
+              _mapController?.animateCamera(
+                CameraUpdate.newLatLng(coordinates),
+              );
+            } else {
+              _closeDrawer();
+            }
+          },
         ),
-
-        // ── MARKERS OVERLAY ─────────────────────────────────────────────
-        ..._buildMarkerOverlays(state, targetLatLng),
 
         // ── TOP HEADER ROW: Hamburger | Search | Close ───────────────────
         Positioned(
@@ -521,9 +790,9 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                                 child: TextField(
                                   controller: _searchController,
                                   onChanged: (query) {
-                                    context
-                                        .read<MapBloc>()
-                                        .add(MapQueryChanged(query));
+                                    context.read<MapBloc>().add(
+                                      MapQueryChanged(query),
+                                    );
                                     setState(() {});
                                   },
                                   style: GoogleFonts.plusJakartaSans(
@@ -551,9 +820,9 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                                 GestureDetector(
                                   onTap: () {
                                     _searchController.clear();
-                                    context
-                                        .read<MapBloc>()
-                                        .add(const MapQueryChanged(''));
+                                    context.read<MapBloc>().add(
+                                      const MapQueryChanged(''),
+                                    );
                                     setState(() {});
                                   },
                                   child: const Icon(
@@ -570,6 +839,18 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                       const SizedBox(width: 10),
 
                       // ── Close (X) Button (top-right) ──────────────────
+                      if (!widget.locationPicker) ...[
+                        _TopBarButton(
+                          onTap: () => _openFilters(state),
+                          child: const Icon(
+                            Icons.tune_rounded,
+                            color: AppTheme.textPrimary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+
                       _TopBarButton(
                         onTap: () => Navigator.of(context).pop(),
                         child: const Icon(
@@ -584,60 +865,61 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                   const SizedBox(height: 10),
 
                   // ── Category Pills ────────────────────────────────────
-                  SizedBox(
-                    height: 38,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: _categories.length,
-                      itemBuilder: (context, index) {
-                        final cat = _categories[index];
-                        final isSelected = state.activeCategory == cat;
+                  if (!widget.locationPicker)
+                    SizedBox(
+                      height: 38,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: _categories.length,
+                        itemBuilder: (context, index) {
+                          final cat = _categories[index];
+                          final isSelected = state.activeCategory == cat;
 
-                        return GestureDetector(
-                          onTap: () {
-                            context
-                                .read<MapBloc>()
-                                .add(MapCategoryChanged(cat));
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppTheme.darkPill
-                                  : AppTheme.cardSurface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
+                          return GestureDetector(
+                            onTap: () {
+                              context.read<MapBloc>().add(
+                                MapCategoryChanged(cat),
+                              );
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
                                 color: isSelected
                                     ? AppTheme.darkPill
-                                    : AppTheme.borderLight,
+                                    : AppTheme.cardSurface,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppTheme.darkPill
+                                      : AppTheme.borderLight,
+                                ),
+                                boxShadow: isSelected
+                                    ? AppTheme.softCardShadow
+                                    : null,
                               ),
-                              boxShadow: isSelected
-                                  ? AppTheme.softCardShadow
-                                  : null,
-                            ),
-                            child: Text(
-                              cat,
-                              style: GoogleFonts.plusJakartaSans(
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppTheme.textPrimary,
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w600,
-                                fontSize: 12.5,
+                              child: Text(
+                                cat,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : AppTheme.textPrimary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                  fontSize: 12.5,
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -657,21 +939,10 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
               setState(() {});
             },
             onMerchantSelected: (merchant) {
-              final lat = merchant['lat'] as double?;
-              final lng = merchant['lng'] as double?;
-              if (lat != null && lng != null && _mapController != null) {
-                _mapController!.animateCamera(
-                  CameraUpdate.newLatLngZoom(LatLng(lat, lng), 15.0),
-                );
-              }
-              setState(() { _isDrawerOpen = true; _drawerMerchant = merchant; });
+              _selectOfferRecommendation(merchant);
             },
             onPlaceSelected: (place) {
-              if (_mapController != null) {
-                _mapController!.animateCamera(
-                  CameraUpdate.newLatLngZoom(LatLng(place.lat, place.lon), 15.0),
-                );
-              }
+              _selectMapPlace(place);
             },
             onClear: () {
               context.read<MapBloc>().add(const MapQueryChanged(''));
@@ -685,7 +956,7 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
         // ── Floating Action Buttons (Recenter / Zoom) ────────────────────
         Positioned(
           right: 16,
-          bottom: state.selectedMerchant != null ? 230 : 50,
+          bottom: 50,
           child: Column(
             children: [
               Container(
@@ -704,22 +975,9 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                     size: 20,
                   ),
                   onPressed: () async {
-                    // Request location refresh from bloc first
                     if (!mounted) return;
+                    _pendingRecenter = true;
                     context.read<MapBloc>().add(const MapRecenterRequested());
-                    
-                    // Wait for state update then animate camera
-                    await Future.delayed(const Duration(milliseconds: 100));
-                    if (!mounted) return;
-                    final blocState = context.read<MapBloc>().state;
-                    if (blocState is MapLoadedState && blocState.userLocation != null && _mapController != null) {
-                      _mapController!.animateCamera(
-                        CameraUpdate.newLatLngZoom(
-                          LatLng(blocState.userLocation!.latitude, blocState.userLocation!.longitude),
-                          15.0,
-                        ),
-                      );
-                    }
                   },
                   tooltip: 'Go to my location',
                 ),
@@ -742,9 +1000,7 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                       ),
                       onPressed: () async {
                         if (_mapController != null) {
-                          _mapController!.animateCamera(
-                            CameraUpdate.zoomIn(),
-                          );
+                          _mapController!.animateCamera(CameraUpdate.zoomIn());
                         }
                       },
                     ),
@@ -761,9 +1017,7 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
                       ),
                       onPressed: () async {
                         if (_mapController != null) {
-                          _mapController!.animateCamera(
-                            CameraUpdate.zoomOut(),
-                          );
+                          _mapController!.animateCamera(CameraUpdate.zoomOut());
                         }
                       },
                     ),
@@ -774,37 +1028,38 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
           ),
         ),
 
-        // ── Bottom Selected Merchant Card ─────────────────────────────────
-        if (state.selectedMerchant != null)
+        if (widget.locationPicker) ...[
+          const IgnorePointer(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 26),
+                child: Icon(
+                  Icons.location_pin,
+                  color: Color(0xFF1D4ED8),
+                  size: 48,
+                  shadows: [Shadow(color: Colors.white, blurRadius: 8)],
+                ),
+              ),
+            ),
+          ),
           Positioned(
             left: 16,
             right: 16,
             bottom: 24,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) => SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 1),
-                  end: Offset.zero,
-                ).animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  ),
-                ),
-                child: child,
-              ),
-              child: _MerchantBottomCard(
-                key: ValueKey(state.selectedMerchant!['id']),
-                merchant: state.selectedMerchant!,
-                onDismiss: () {
-                  context.read<MapBloc>().add(const MapCardDismissed());
-                },
+            child: FilledButton.icon(
+              onPressed: () => _confirmMapLocation(state),
+              icon: const Icon(Icons.check_rounded),
+              label: const Text('Use this location'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
+                backgroundColor: AppTheme.darkPill,
+                foregroundColor: Colors.white,
               ),
             ),
           ),
+        ],
 
-        // ── Offer Drawer (slide-in panel) ─────────────────────────────────
+        // ── Offer preview at the bottom, leaving the map visible ───────────
         OfferMapDrawer(
           merchant: _drawerMerchant,
           isOpen: _isDrawerOpen,
@@ -818,9 +1073,7 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
             opacity: _menuFadeAnimation,
             child: GestureDetector(
               onTap: _closeMenu,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.40),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.40)),
             ),
           ),
 
@@ -1054,7 +1307,9 @@ class _CategoryMenuItem extends StatelessWidget {
           color: isActive ? color.withValues(alpha: 0.10) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isActive ? color.withValues(alpha: 0.30) : Colors.transparent,
+            color: isActive
+                ? color.withValues(alpha: 0.30)
+                : Colors.transparent,
           ),
         ),
         child: Row(
@@ -1091,7 +1346,9 @@ class _CategoryMenuItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
               decoration: BoxDecoration(
-                color: isActive ? color.withValues(alpha: 0.15) : AppTheme.surfaceSubtle,
+                color: isActive
+                    ? color.withValues(alpha: 0.15)
+                    : AppTheme.surfaceSubtle,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -1114,291 +1371,6 @@ class _CategoryMenuItem extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── User Location Beacon ─────────────────────────────────────────────────────
-class _UserBeacon extends StatefulWidget {
-  @override
-  State<_UserBeacon> createState() => _UserBeaconState();
-}
-
-class _UserBeaconState extends State<_UserBeacon>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat();
-    _pulse = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (context, child) {
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 50 * _pulse.value + 10,
-              height: 50 * _pulse.value + 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF346EF6).withValues(
-                  alpha: (1 - _pulse.value) * 0.4,
-                ),
-              ),
-            ),
-            Container(
-              width: 20,
-              height: 20,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x330053DB),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 13,
-              height: 13,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFF0053DB),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-
-// ── Merchant Bottom Card ─────────────────────────────────────────────────────
-class _MerchantBottomCard extends StatelessWidget {
-  final Map<String, dynamic> merchant;
-  final VoidCallback onDismiss;
-
-  const _MerchantBottomCard({
-    super.key,
-    required this.merchant,
-    required this.onDismiss,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.cardSurface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: AppTheme.softCardShadow,
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  merchant['image'] as String,
-                  width: 84,
-                  height: 84,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, _) => Container(
-                    width: 84,
-                    height: 84,
-                    color: AppTheme.surfaceSubtle,
-                    child: const Icon(
-                      Icons.restaurant,
-                      color: AppTheme.accentPeriwinkle,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkPill,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            merchant['highlightTag'] as String,
-                            style: GoogleFonts.plusJakartaSans(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 15,
-                              color: Color(0xFFFFB800),
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              merchant['rating'] as String,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: AppTheme.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        GestureDetector(
-                          onTap: onDismiss,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceSubtle,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 14,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      merchant['hotelName'] as String,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: AppTheme.textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      merchant['offerType'] as String,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: AppTheme.savingsGreen,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on_rounded,
-                          size: 13,
-                          color: AppTheme.accentPeriwinkleDark,
-                        ),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(
-                            merchant['location'] as String,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11.5,
-                              color: AppTheme.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          merchant['distanceFromUser'] as String,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11.5,
-                            color: AppTheme.textSecondary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => OfferDetailPage(
-                    offer: OfferEntity(
-                      title: 'BOGOF Offer',
-                      description: 'Buy 1 Get 1 Free on selected items.',
-                      terms: 'Valid for dine-in only. Cannot be combined with other offers.',
-                      category: OfferCategory.fromString(merchant['category'] as String? ?? 'DINING'),
-                      merchantName: merchant['hotelName'] as String?,
-                      imageUrl: merchant['image'] as String?,
-                      estimatedSavingsNpr: 500,
-                      maxPerUser: 3,
-                    ),
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(
-              Icons.visibility_rounded,
-              size: 16,
-              color: Colors.white,
-            ),
-            label: Text(
-              'View BOGOF Offers',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                color: Colors.white,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.darkPill,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              minimumSize: const Size(double.infinity, 44),
-            ),
-          ),
-        ],
       ),
     );
   }

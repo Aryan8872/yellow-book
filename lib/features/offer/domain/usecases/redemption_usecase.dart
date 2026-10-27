@@ -9,8 +9,11 @@ class InitRedemptionUsecase {
   final RedemptionRepository repository;
   InitRedemptionUsecase(this.repository);
 
-  Future<Either<Failure, RedemptionEntity>> call(String offerId) =>
-      repository.initRedemption(offerId);
+  Future<Either<Failure, RedemptionEntity>> call(
+    String offerId, {
+    String? branchId,
+  }) =>
+      repository.initRedemption(offerId, branchId: branchId);
 }
 
 @Injectable()

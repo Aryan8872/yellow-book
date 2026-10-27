@@ -18,7 +18,8 @@ class MyVouchersPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<RedemptionBloc>(
-      create: (_) => getIt<RedemptionBloc>()..add(const FetchMyRedemptionsRequested()),
+      create: (_) =>
+          getIt<RedemptionBloc>()..add(const FetchMyRedemptionsRequested()),
       child: const _MyVouchersView(),
     );
   }
@@ -34,9 +35,17 @@ class _MyVouchersView extends StatefulWidget {
 class _MyVouchersViewState extends State<_MyVouchersView> {
   String _selectedFilter = 'All';
 
-  final List<String> _filters = ['All', 'Active', 'Redeemed', 'Expired', 'Cancelled'];
+  final List<String> _filters = [
+    'All',
+    'Active',
+    'Redeemed',
+    'Expired',
+    'Cancelled',
+  ];
 
-  List<RedemptionEntity> _filterRedemptions(List<RedemptionEntity> redemptions) {
+  List<RedemptionEntity> _filterRedemptions(
+    List<RedemptionEntity> redemptions,
+  ) {
     if (_selectedFilter == 'All') return redemptions;
 
     return redemptions.where((r) {
@@ -65,7 +74,10 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppTheme.textPrimary,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
@@ -83,7 +95,9 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
           if (state is RedemptionLoading) {
             return const Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentPeriwinkle),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppTheme.accentPeriwinkle,
+                ),
               ),
             );
           }
@@ -95,7 +109,11 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 48),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: Color(0xFFEF4444),
+                      size: 48,
+                    ),
                     const SizedBox(height: 14),
                     Text(
                       'Failed to load vouchers',
@@ -117,13 +135,20 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
                     const SizedBox(height: 18),
                     ElevatedButton(
                       onPressed: () {
-                        context.read<RedemptionBloc>().add(const FetchMyRedemptionsRequested());
+                        context.read<RedemptionBloc>().add(
+                          const FetchMyRedemptionsRequested(),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.darkPill,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
-                      child: const Text('Retry', style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        'Retry',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -143,7 +168,7 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: _filters.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final filter = _filters[index];
                     final isSelected = _selectedFilter == filter;
@@ -155,17 +180,23 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
                           _selectedFilter = filter;
                         });
                       },
-                      selectedColor: AppTheme.accentPeriwinkle.withValues(alpha: 0.2),
+                      selectedColor: AppTheme.accentPeriwinkle.withValues(
+                        alpha: 0.2,
+                      ),
                       checkmarkColor: AppTheme.accentPeriwinkle,
                       labelStyle: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? AppTheme.accentPeriwinkle : AppTheme.textSecondary,
+                        color: isSelected
+                            ? AppTheme.accentPeriwinkle
+                            : AppTheme.textSecondary,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                         side: BorderSide(
-                          color: isSelected ? AppTheme.accentPeriwinkle : AppTheme.borderSubtle,
+                          color: isSelected
+                              ? AppTheme.accentPeriwinkle
+                              : AppTheme.borderSubtle,
                         ),
                       ),
                       backgroundColor: AppTheme.cardSurface,
@@ -236,9 +267,14 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.darkPill,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                               ),
-                              child: const Text('Browse Offers', style: TextStyle(color: Colors.white)),
+                              child: const Text(
+                                'Browse Offers',
+                                style: TextStyle(color: Colors.white),
+                              ),
                             ),
                           ],
                         ),
@@ -256,29 +292,42 @@ class _MyVouchersViewState extends State<_MyVouchersView> {
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async {
-                      context.read<RedemptionBloc>().add(const FetchMyRedemptionsRequested());
+                      context.read<RedemptionBloc>().add(
+                        const FetchMyRedemptionsRequested(),
+                      );
                     },
                     child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
                       itemCount: filteredVouchers.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 14),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 14),
                       itemBuilder: (context, index) {
                         final item = filteredVouchers[index];
                         return _VoucherCard(
                           redemption: item,
                           onTap: () {
+                            final redemptionBloc = context
+                                .read<RedemptionBloc>();
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => RedemptionDetailPage(
                                   redemption: item,
+                                  redemptionBloc: redemptionBloc,
                                 ),
                               ),
                             );
                           },
                           onCancel: () {
-                            context.read<RedemptionBloc>().add(CancelRedemptionRequested(item.id));
+                            context.read<RedemptionBloc>().add(
+                              CancelRedemptionRequested(item.id),
+                            );
                           },
                         );
                       },
@@ -309,11 +358,16 @@ class _VoucherCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPending = redemption.status == 'INIT' || redemption.status == 'PENDING';
-    final isCompleted = redemption.status == 'REDEEMED' || redemption.status == 'COMPLETED';
-    final isExpired = redemption.status == 'EXPIRED' ||
-        (redemption.expiresAt != null && redemption.expiresAt!.isBefore(DateTime.now()));
-    final isCancelled = redemption.status == 'REJECTED' || redemption.status == 'CANCELLED';
+    final isPending =
+        redemption.status == 'INIT' || redemption.status == 'PENDING';
+    final isCompleted =
+        redemption.status == 'REDEEMED' || redemption.status == 'COMPLETED';
+    final isExpired =
+        redemption.status == 'EXPIRED' ||
+        (redemption.expiresAt != null &&
+            redemption.expiresAt!.isBefore(DateTime.now()));
+    final isCancelled =
+        redemption.status == 'REJECTED' || redemption.status == 'CANCELLED';
 
     // Resolved status for the canonical StatusBadge: active-state vouchers
     // whose expiry has passed visually resolve to EXPIRED (preserves the old
@@ -326,8 +380,11 @@ class _VoucherCard extends StatelessWidget {
       }
     }
 
-    final code = redemption.redemptionCode ??
-        (redemption.id.isNotEmpty ? redemption.id.substring(0, 8).toUpperCase() : '');
+    final code =
+        redemption.redemptionCode ??
+        (redemption.id.isNotEmpty
+            ? redemption.id.substring(0, 8).toUpperCase()
+            : '');
 
     // Calculate time remaining
     String timeText = '';
@@ -385,7 +442,9 @@ class _VoucherCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  redemption.offerTitle.isNotEmpty ? redemption.offerTitle : 'Special Offer',
+                  redemption.offerTitle.isNotEmpty
+                      ? redemption.offerTitle
+                      : 'Special Offer',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16.5,
                     fontWeight: FontWeight.w800,
@@ -399,7 +458,11 @@ class _VoucherCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.qr_code_2_rounded, size: 18, color: AppTheme.accentPeriwinkle),
+                        const Icon(
+                          Icons.qr_code_2_rounded,
+                          size: 18,
+                          color: AppTheme.accentPeriwinkle,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           code,
@@ -415,9 +478,14 @@ class _VoucherCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          isPending ? Icons.access_time_rounded : Icons.info_outline_rounded,
+                          isPending
+                              ? Icons.access_time_rounded
+                              : Icons.info_outline_rounded,
                           size: 14,
-                          color: isPending && redemption.expiresAt != null && redemption.expiresAt!.isAfter(DateTime.now())
+                          color:
+                              isPending &&
+                                  redemption.expiresAt != null &&
+                                  redemption.expiresAt!.isAfter(DateTime.now())
                               ? AppTheme.savingsGreen
                               : AppTheme.textMuted,
                         ),
@@ -427,7 +495,12 @@ class _VoucherCard extends StatelessWidget {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: isPending && redemption.expiresAt != null && redemption.expiresAt!.isAfter(DateTime.now())
+                            color:
+                                isPending &&
+                                    redemption.expiresAt != null &&
+                                    redemption.expiresAt!.isAfter(
+                                      DateTime.now(),
+                                    )
                                 ? AppTheme.savingsGreen
                                 : AppTheme.textMuted,
                           ),
@@ -444,7 +517,10 @@ class _VoucherCard extends StatelessWidget {
                       onPressed: onCancel,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.errorRed,
-                        side: const BorderSide(color: AppTheme.errorRed, width: 1.5),
+                        side: const BorderSide(
+                          color: AppTheme.errorRed,
+                          width: 1.5,
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

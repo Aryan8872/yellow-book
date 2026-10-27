@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:injectable/injectable.dart';
@@ -5,44 +8,31 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 import 'package:entertainer/features/offer/domain/usecases/offer_usecase.dart';
 import 'package:entertainer/features/offer/domain/usecases/offer_params.dart';
+
 import 'map_event.dart';
 import 'map_state.dart';
 
-/// Fallback demo merchants used when API returns no data
-const List<Map<String, dynamic>> _demoMerchants = [
-  {
-    'id': 'demo-m1',
-    'hotelName': 'Tribes Restaurant & Grill',
-    'category': 'Dining',
-    'highlightTag': 'BOGOF',
-    'offerType': 'Buy 1 Get 1 Main Course',
-    'rating': '4.9',
-    'location': 'Durbar Marg, Kathmandu',
-    'distanceFromUser': '0.8 km',
-    'image': 'https://img.freepik.com/free-photo/top-view-table-full-food_23-2149209253.jpg?semt=ais_hybrid&w=740&q=80',
-    'latitude': 27.7172,
-    'longitude': 85.3240,
-  },
-  {
-    'id': 'demo-m2',
-    'hotelName': 'Grand Horizon Luxury Resort',
-    'category': 'Hotels',
-    'highlightTag': 'Staycation',
-    'offerType': 'Buy 1 Night Get 1 Free',
-    'rating': '4.9',
-    'location': 'Lazimpat, Kathmandu',
-    'distanceFromUser': '3.8 km',
-    'image': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80',
-    'latitude': 27.7280,
-    'longitude': 85.3400,
-  },
-];
+class MapLocationResult {
+  final LatLng? location;
+  final String? error;
+  final bool permissionGranted;
+  final bool servicesEnabled;
+
+  const MapLocationResult({
+    this.location,
+    this.error,
+    this.permissionGranted = false,
+    this.servicesEnabled = true,
+  });
+}
 
 @injectable
 class MapBloc extends Bloc<MapEvent, MapState> {
   final GetPaginatedOffersUsecase _getPaginatedOffersUsecase;
 
   List<Map<String, dynamic>> _allMerchants = [];
+  int _offerRequestId = 0;
+  static const _mapOfferLimit = 100;
 
   MapBloc(this._getPaginatedOffersUsecase) : super(const MapLoadingState()) {
     on<MapInitialLoadRequested>(_onInitialLoad);
@@ -51,102 +41,173 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapMerchantSelected>(_onMerchantSelected);
     on<MapCardDismissed>(_onCardDismissed);
     on<MapRecenterRequested>(_onRecenter);
+    on<MapFiltersApplied>(_onFiltersApplied);
+    on<MapPlaceSelected>(_onPlaceSelected);
     on<MapFocusBranchRequested>(_onFocusBranch);
     on<MapErrorOccurred>(_onErrorOccurred);
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  Future<LatLng> _fetchUserLocation() async {
-    const defaultLocation = LatLng(27.7172, 85.3240);
+  Future<MapLocationResult> _fetchUserLocation() async {
+    final servicesEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!servicesEnabled) {
+      return const MapLocationResult(
+        error: 'Location services are off. Enable them to find nearby offers.',
+        servicesEnabled: false,
+      );
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission != LocationPermission.always &&
+        permission != LocationPermission.whileInUse) {
+      return const MapLocationResult(
+        error: 'Location permission is off. Enable it in Settings to locate nearby offers.',
+      );
+    }
+
     try {
-      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!isServiceEnabled) return defaultLocation;
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        // Permission denied - emit error state with user-facing copy
-        add(MapErrorOccurred('Location permission off', 'Enable location access in Settings to find offers near you.'));
-        return defaultLocation;
-      }
-
-      try {
-        final lastKnown = await Geolocator.getLastKnownPosition();
-        if (lastKnown != null) {
-          return LatLng(lastKnown.latitude, lastKnown.longitude);
-        }
-      } catch (_) {}
-
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
+          accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 4),
         ),
-      ).timeout(
-        const Duration(seconds: 4),
-        onTimeout: () => throw Exception('Location fetch timed out'),
       );
-      return LatLng(position.latitude, position.longitude);
-    } catch (_) {
-      return defaultLocation;
+      return MapLocationResult(
+        location: LatLng(position.latitude, position.longitude),
+        permissionGranted: true,
+      );
+    } on TimeoutException {
+      return const MapLocationResult(
+        error: 'Could not get a fresh location. You can still browse the map.',
+        permissionGranted: true,
+      );
+    } on LocationServiceDisabledException {
+      return const MapLocationResult(
+        error: 'Location services are off. Enable them to find nearby offers.',
+        servicesEnabled: false,
+      );
+    } on PermissionDeniedException {
+      return const MapLocationResult(
+        error: 'Location permission is off. Enable it in Settings to locate nearby offers.',
+      );
     }
   }
 
-  /// Convert an [OfferEntity] to the map-pin data map.
-  /// Uses the first branch lat/lng if available, else drops the pin at
-  /// the default Kathmandu centre with a small random scatter.
-  static Map<String, dynamic> _offerToMapPin(OfferEntity offer, int index) {
-    final branch = offer.merchant?.branches.isNotEmpty == true
-        ? offer.merchant!.branches.first
-        : null;
-    final double lat = (branch?.lat ?? 0.0) != 0.0
-        ? branch!.lat
-        : 27.7172 + (index % 5) * 0.008 - 0.016;
-    final double lng = (branch?.lng ?? 0.0) != 0.0
-        ? branch!.lng
-        : 85.3240 + (index % 7) * 0.007 - 0.021;
+  /// Converts a live offer to a map pin, selecting the nearest or first branch.
+  static Map<String, dynamic>? offerToMapPin(
+    OfferEntity offer, {
+    double? referenceLat,
+    double? referenceLng,
+  }) {
+    final pins = offerToMapPins(offer, referenceLat: referenceLat, referenceLng: referenceLng);
+    return pins.isEmpty ? null : pins.first;
+  }
 
-    final categoryStr = offer.merchant?.branches.isNotEmpty == true
-        ? offer.category.name
-        : offer.category.name;
+  /// Converts an offer into multiple map pins — one for each active branch with valid coordinates.
+  static List<Map<String, dynamic>> offerToMapPins(
+    OfferEntity offer, {
+    double? referenceLat,
+    double? referenceLng,
+  }) {
+    final candidateBranches = offer.branches.isNotEmpty
+        ? offer.branches
+        : (offer.merchant?.branches ?? const <MerchantBranchEntity>[]);
 
-    return {
-      'id': offer.id ?? 'map-$index',
-      'hotelName': offer.merchantName ?? offer.merchant?.name ?? 'Merchant',
-      'category': _categoryDisplayName(categoryStr),
-      'highlightTag': offer.discountPercentage != null
-          ? '${offer.discountPercentage}% OFF'
-          : 'BOGOF',
-      'offerType': offer.title,
-      'rating': offer.rating.toStringAsFixed(1),
-      'location': branch != null
-          ? '${branch.address}, ${branch.city}'
-          : 'Kathmandu, Nepal',
-      'distanceFromUser': '${(0.5 + index * 0.4).toStringAsFixed(1)} km',
-      'image': offer.imageUrl ??
-          (offer.images.isNotEmpty
-              ? offer.images.first
-              : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80'),
-      'latitude': lat,
-      'longitude': lng,
-      // Keep full entity reference for navigation
-      'offer': offer,
-    };
+    final branches = candidateBranches
+        .where(
+          (branch) =>
+              branch.lat.isFinite &&
+              branch.lng.isFinite &&
+              branch.lat >= -90 &&
+              branch.lat <= 90 &&
+              branch.lng >= -180 &&
+              branch.lng <= 180,
+        )
+        .toList();
+
+    final id = offer.id?.trim();
+    if (branches.isEmpty || id == null || id.isEmpty) {
+      return const [];
+    }
+
+    return branches.map((branch) {
+      return {
+        'id': id,
+        'pinId': '$id:${branch.id}',
+        'offerId': id,
+        'branchId': branch.id,
+        'branchName': branch.name,
+        'hotelName': offer.merchantName ?? offer.merchant?.name ?? 'Merchant',
+        'category': _categoryDisplayName(offer.category.name),
+        'categoryId': offer.categoryId,
+        'categorySlug': offer.category.name.toUpperCase(),
+        'highlightTag': offer.discountPercentage != null
+            ? '${offer.discountPercentage}% OFF'
+            : 'BOGOF',
+        'offerType': offer.title,
+        'rating': offer.rating.toStringAsFixed(1),
+        'ratingValue': offer.rating,
+        'location': '${branch.address}, ${branch.city}',
+        'branchAddress': branch.address,
+        'branchCity': branch.city,
+        'distanceFromUser': (referenceLat != null && referenceLng != null)
+            ? '${_distanceKm(referenceLat, referenceLng, branch.lat, branch.lng).toStringAsFixed(1)} km'
+            : '',
+        'image':
+            offer.imageUrl ??
+            (offer.images.isNotEmpty
+                ? offer.images.first
+                : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80'),
+        'lat': branch.lat,
+        'lng': branch.lng,
+        // Keep full entity reference for navigation
+        'offer': offer,
+        'branch': branch,
+      };
+    }).toList();
+  }
+
+  static double _distanceKm(
+    double fromLat,
+    double fromLng,
+    double toLat,
+    double toLng,
+  ) {
+    const earthRadiusKm = 6371.0;
+    final latitudeDelta = (toLat - fromLat) * math.pi / 180;
+    final longitudeDelta = (toLng - fromLng) * math.pi / 180;
+    final fromLatitude = fromLat * math.pi / 180;
+    final toLatitude = toLat * math.pi / 180;
+    final haversine =
+        math.pow(math.sin(latitudeDelta / 2), 2) +
+        math.cos(fromLatitude) *
+            math.cos(toLatitude) *
+            math.pow(math.sin(longitudeDelta / 2), 2);
+    return 2 *
+        earthRadiusKm *
+        math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine));
   }
 
   static String _categoryDisplayName(String slug) {
     switch (slug.toLowerCase()) {
-      case 'dining': return 'Dining';
-      case 'wellness': return 'Activities';
-      case 'entertainment': return 'Activities';
-      case 'retail': return 'Offers';
-      case 'travel': return 'Hotels';
-      case 'beauty': return 'Activities';
-      default: return 'Offers';
+      case 'dining':
+        return 'Dining';
+      case 'wellness':
+        return 'Activities';
+      case 'entertainment':
+        return 'Activities';
+      case 'retail':
+        return 'Offers';
+      case 'travel':
+        return 'Hotels';
+      case 'beauty':
+        return 'Activities';
+      default:
+        return 'Offers';
     }
   }
 
@@ -156,49 +217,192 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     MapInitialLoadRequested event,
     Emitter<MapState> emit,
   ) async {
+    final requestId = ++_offerRequestId;
     emit(const MapLoadingState());
 
-    // Fetch user location and API data concurrently
-    final results = await Future.wait([
-      _fetchUserLocation(),
-      _loadMerchantsFromApi(),
-    ]);
+    final locationResult = await _fetchUserLocation();
+    final browseLocation = event.latitude != null && event.longitude != null
+        ? LatLng(event.latitude!, event.longitude!)
+        : locationResult.location;
+    final offerResult = await _loadMerchantsFromApi(
+      lat: browseLocation?.latitude,
+      lng: browseLocation?.longitude,
+      radiusKm: browseLocation == null ? null : 20,
+      referenceLat: browseLocation?.latitude,
+      referenceLng: browseLocation?.longitude,
+    );
+    if (requestId != _offerRequestId) return;
 
-    final userLocation = results[0] as LatLng;
-    final merchants = results[1] as List<Map<String, dynamic>>;
+    _allMerchants = offerResult.merchants;
+    final visibleMerchants = _filter('', 'All', 0);
 
-    _allMerchants = merchants;
-
-    emit(MapLoadedState(
-      query: '',
-      activeCategory: 'All',
-      merchants: _allMerchants,
-      selectedMerchant:
-          _allMerchants.isNotEmpty ? _allMerchants.first : null,
-      userLocation: userLocation,
-    ));
+    emit(
+      MapLoadedState(
+        query: '',
+        activeCategory: 'All',
+        merchants: visibleMerchants,
+        userLocation: locationResult.location,
+        locationError: locationResult.error,
+        locationPermissionGranted: locationResult.permissionGranted,
+        locationServicesEnabled: locationResult.servicesEnabled,
+        offersError: offerResult.error,
+        browseLocation: browseLocation,
+        browseLocationLabel: event.locationLabel,
+      ),
+    );
   }
 
-  Future<List<Map<String, dynamic>>> _loadMerchantsFromApi() async {
-    try {
-      final result = await _getPaginatedOffersUsecase.call(
-        const GetPaginatedOffersParams(page: 1, limit: 50),
-      );
-      return await result.fold(
-        (_) => List<Map<String, dynamic>>.from(_demoMerchants),
-        (paginated) {
-          if (paginated.offers.isEmpty) {
-            return List<Map<String, dynamic>>.from(_demoMerchants);
-          }
-          return paginated.offers
-              .asMap()
-              .entries
-              .map((e) => _offerToMapPin(e.value, e.key))
-              .toList();
-        },
-      );
-    } catch (_) {
-      return List<Map<String, dynamic>>.from(_demoMerchants);
+  Future<_OfferLoadResult> _loadMerchantsFromApi({
+    String? query,
+    String? category,
+    double? lat,
+    double? lng,
+    double? radiusKm,
+    double? referenceLat,
+    double? referenceLng,
+  }) async {
+    final result = await _getPaginatedOffersUsecase.call(
+      GetPaginatedOffersParams(
+        page: 1,
+        limit: _mapOfferLimit,
+        q: query,
+        category: category,
+        lat: lat,
+        lng: lng,
+        radiusKm: radiusKm,
+      ),
+    );
+    return result.fold(
+      (failure) => _OfferLoadResult([], failure.message),
+      (paginated) => _OfferLoadResult(
+        paginated.offers
+            .expand(
+              (offer) => offerToMapPins(
+                offer,
+                referenceLat: referenceLat,
+                referenceLng: referenceLng,
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Future<void> _onFiltersApplied(
+    MapFiltersApplied event,
+    Emitter<MapState> emit,
+  ) async {
+    final current = state;
+    if (current is! MapLoadedState) return;
+    final requestId = ++_offerRequestId;
+
+    emit(
+      current.copyWith(
+        activeCategory: event.category,
+        radiusKm: event.radiusKm,
+        minimumRating: event.minimumRating,
+        onlyOpenNow: event.onlyOpenNow,
+        browseLocation: LatLng(event.lat, event.lng),
+        isLoadingOffers: true,
+      ),
+    );
+    final result = await _loadMerchantsFromApi(
+      query: current.query,
+      category: _apiCategory(event.category),
+      lat: event.lat,
+      lng: event.lng,
+      radiusKm: event.radiusKm,
+      referenceLat: event.lat,
+      referenceLng: event.lng,
+    );
+    if (requestId != _offerRequestId) return;
+
+    final latest = state;
+    if (latest is! MapLoadedState) return;
+    _allMerchants = result.merchants;
+    final filtered = _filter(
+      latest.query,
+      event.category,
+      event.minimumRating,
+      event.onlyOpenNow,
+    );
+    emit(
+      latest.copyWith(
+        activeCategory: event.category,
+        radiusKm: event.radiusKm,
+        minimumRating: event.minimumRating,
+        onlyOpenNow: event.onlyOpenNow,
+        browseLocation: LatLng(event.lat, event.lng),
+        merchants: filtered,
+        offersError: result.error,
+        clearOffersError: result.error == null,
+        isLoadingOffers: false,
+      ),
+    );
+  }
+
+  Future<void> _onPlaceSelected(
+    MapPlaceSelected event,
+    Emitter<MapState> emit,
+  ) async {
+    final current = state;
+    if (current is! MapLoadedState) return;
+    final requestId = ++_offerRequestId;
+
+    final browseLocation = LatLng(event.latitude, event.longitude);
+    emit(
+      current.copyWith(
+        query: '',
+        browseLocation: browseLocation,
+        browseLocationLabel: event.label,
+        radiusKm: 20,
+        isLoadingOffers: true,
+      ),
+    );
+    final result = await _loadMerchantsFromApi(
+      category: _apiCategory(current.activeCategory),
+      lat: event.latitude,
+      lng: event.longitude,
+      radiusKm: 20,
+      referenceLat: event.latitude,
+      referenceLng: event.longitude,
+    );
+    if (requestId != _offerRequestId) return;
+    final latest = state;
+    if (latest is! MapLoadedState) return;
+    _allMerchants = result.merchants;
+    emit(
+      latest.copyWith(
+        query: '',
+        merchants: _filter('', latest.activeCategory, latest.minimumRating),
+        browseLocation: browseLocation,
+        browseLocationLabel: event.label,
+        radiusKm: 20,
+        offersError: result.error,
+        clearOffersError: result.error == null,
+        isLoadingOffers: false,
+      ),
+    );
+  }
+
+  static String? _apiCategory(String category) {
+    switch (category) {
+      case 'Dining':
+        return 'DINING';
+      case 'Hotels':
+      case 'Travel':
+        return 'TRAVEL';
+      case 'Offers':
+      case 'Retail':
+        return 'RETAIL';
+      case 'Wellness':
+        return 'WELLNESS';
+      case 'Entertainment':
+        return 'ENTERTAINMENT';
+      case 'Beauty':
+        return 'BEAUTY';
+      default:
+        return null;
     }
   }
 
@@ -208,8 +412,45 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   ) async {
     final current = state;
     if (current is MapLoadedState) {
-      final userLocation = await _fetchUserLocation();
-      emit(current.copyWith(userLocation: userLocation));
+      final locationResult = await _fetchUserLocation();
+      final location = locationResult.location;
+      final requestId = ++_offerRequestId;
+      final result = location == null
+          ? null
+          : await _loadMerchantsFromApi(
+              query: current.query,
+              category: _apiCategory(current.activeCategory),
+              lat: location.latitude,
+              lng: location.longitude,
+              radiusKm: current.radiusKm,
+              referenceLat: location.latitude,
+              referenceLng: location.longitude,
+            );
+      if (requestId != _offerRequestId) return;
+      if (result != null) _allMerchants = result.merchants;
+      emit(
+        current.copyWith(
+          userLocation: location,
+          clearUserLocation: location == null,
+          locationError: locationResult.error,
+          clearLocationError: locationResult.error == null,
+          locationPermissionGranted: locationResult.permissionGranted,
+          locationServicesEnabled: locationResult.servicesEnabled,
+          locationRevision: current.locationRevision + 1,
+          browseLocation: location ?? current.browseLocation,
+          browseLocationLabel: location == null ? null : 'Current location',
+          clearBrowseLocationLabel: location == null,
+          merchants: result == null
+              ? current.merchants
+              : _filter(
+                  current.query,
+                  current.activeCategory,
+                  current.minimumRating,
+                ),
+          offersError: result?.error,
+          clearOffersError: result?.error == null,
+        ),
+      );
     }
   }
 
@@ -217,55 +458,43 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     MapFocusBranchRequested event,
     Emitter<MapState> emit,
   ) async {
-    // Create a merchant map shape for the branch focus
-    final branchMerchant = {
-      'hotelName': event.title ?? 'Branch Location',
-      'latitude': event.lat,
-      'longitude': event.lng,
-      'location': 'Branch',
-      'category': 'All',
-      'highlightTag': '',
-      'offerType': '',
-      'rating': '',
-      'distanceFromUser': '',
-      'image': '',
-    };
-    emit(MapLoadedState(
-      merchants: _allMerchants,
-      selectedMerchant: branchMerchant,
-      userLocation: LatLng(event.lat, event.lng),
-      query: '',
-      activeCategory: 'All',
-    ));
+    final current = state;
+    if (current is! MapLoadedState) return;
+    emit(
+      current.copyWith(
+        browseLocation: LatLng(event.lat, event.lng),
+        browseLocationLabel: event.title ?? 'Branch location',
+        clearSelected: true,
+      ),
+    );
   }
 
   void _onQueryChanged(MapQueryChanged event, Emitter<MapState> emit) {
     final current = state;
     if (current is! MapLoadedState) return;
     final query = event.query.trim().toLowerCase();
-    final filtered = _filter(query, current.activeCategory);
-    emit(current.copyWith(
-      query: query,
-      merchants: filtered,
-      selectedMerchant: filtered.isNotEmpty ? filtered.first : null,
-      clearSelected: filtered.isEmpty,
-    ));
+    final filtered = _filter(
+      query,
+      current.activeCategory,
+      current.minimumRating,
+      current.onlyOpenNow,
+    );
+    emit(current.copyWith(query: query, merchants: filtered));
   }
 
   void _onCategoryChanged(MapCategoryChanged event, Emitter<MapState> emit) {
     final current = state;
     if (current is! MapLoadedState) return;
-    final filtered = _filter(current.query, event.category);
-    emit(current.copyWith(
-      activeCategory: event.category,
-      merchants: filtered,
-      selectedMerchant: filtered.isNotEmpty ? filtered.first : null,
-      clearSelected: filtered.isEmpty,
-    ));
+    final filtered = _filter(
+      current.query,
+      event.category,
+      current.minimumRating,
+      current.onlyOpenNow,
+    );
+    emit(current.copyWith(activeCategory: event.category, merchants: filtered));
   }
 
-  void _onMerchantSelected(
-      MapMerchantSelected event, Emitter<MapState> emit) {
+  void _onMerchantSelected(MapMerchantSelected event, Emitter<MapState> emit) {
     final current = state;
     if (current is! MapLoadedState) return;
     emit(current.copyWith(selectedMerchant: event.merchant));
@@ -281,18 +510,61 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     emit(MapErrorState(event.message, event.details));
   }
 
-  List<Map<String, dynamic>> _filter(String query, String category) {
+  List<Map<String, dynamic>> _filter(
+    String query,
+    String category, [
+    double minimumRating = 0,
+    bool onlyOpenNow = false,
+  ]) {
     return _allMerchants.where((item) {
-      final nameMatches =
-          item['hotelName'].toString().toLowerCase().contains(query);
-      final locationMatches =
-          item['location'].toString().toLowerCase().contains(query);
-      final tagMatches =
-          item['highlightTag'].toString().toLowerCase().contains(query);
-      final categoryMatches =
-          category == 'All' || item['category'] == category;
-      if (query.isEmpty) return categoryMatches;
-      return (nameMatches || locationMatches || tagMatches) && categoryMatches;
+      final nameMatches = item['hotelName'].toString().toLowerCase().contains(
+        query,
+      );
+      final locationMatches = item['location']
+          .toString()
+          .toLowerCase()
+          .contains(query);
+      final branchMatches = (item['branchName'] ?? '')
+          .toString()
+          .toLowerCase()
+          .contains(query);
+      final tagMatches = item['highlightTag'].toString().toLowerCase().contains(
+        query,
+      );
+      final itemCategory = item['category'] as String? ?? '';
+      final itemCategorySlug = item['categorySlug'] as String? ?? '';
+      final categoryMatches = switch (category) {
+        'All' => true,
+        'Hotels' || 'Travel' => itemCategorySlug == 'TRAVEL',
+        'Offers' || 'Retail' => itemCategorySlug == 'RETAIL',
+        'Activities' => const {
+          'WELLNESS',
+          'ENTERTAINMENT',
+          'BEAUTY',
+        }.contains(itemCategorySlug),
+        _ =>
+          itemCategorySlug == category.toUpperCase() ||
+              itemCategory == category,
+      };
+      final ratingMatches =
+          (item['ratingValue'] as num? ?? 0).toDouble() >= minimumRating;
+
+      // Operating hours / Open Now check
+      // When onlyOpenNow is true, check whether item has openNow flag or falls within default operating hours
+      final openNowMatches = !onlyOpenNow || (item['isOpenNow'] as bool? ?? true);
+
+      if (query.isEmpty) return categoryMatches && ratingMatches && openNowMatches;
+      return (nameMatches || locationMatches || branchMatches || tagMatches) &&
+          categoryMatches &&
+          ratingMatches &&
+          openNowMatches;
     }).toList();
   }
+}
+
+class _OfferLoadResult {
+  final List<Map<String, dynamic>> merchants;
+  final String? error;
+
+  const _OfferLoadResult(this.merchants, [this.error]);
 }

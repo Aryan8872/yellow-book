@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+
 import '../../errors/failure.dart';
 
 /// Interceptor that inspects Dio errors and enriches them with backend RFC 7807 problem details
@@ -36,13 +37,26 @@ class ErrorInterceptor extends Interceptor {
         }
 
         if (statusCode == 401) {
-          return AuthFailure.withDetails(formattedMessage, errorCode: errorCode);
+          return AuthFailure.withDetails(
+            formattedMessage,
+            errorCode: errorCode,
+            statusCode: statusCode,
+          );
         } else if (statusCode == 400 || statusCode == 422) {
-          return ValidationFailure.withDetails(formattedMessage, errorCode: errorCode);
+          return ValidationFailure.withDetails(
+            formattedMessage,
+            errorCode: errorCode,
+          );
         } else if (statusCode == 404) {
-          return NotFoundFailure.withDetails(formattedMessage, errorCode: errorCode);
+          return NotFoundFailure.withDetails(
+            formattedMessage,
+            errorCode: errorCode,
+          );
         } else if (statusCode == 429) {
-          return RateLimitFailure.withDetails(formattedMessage, errorCode: errorCode);
+          return RateLimitFailure.withDetails(
+            formattedMessage,
+            errorCode: errorCode,
+          );
         }
 
         return ServerFailure.withDetails(
@@ -53,8 +67,6 @@ class ErrorInterceptor extends Interceptor {
       }
     }
 
-    return ServerFailure(
-      err.message ?? 'An unexpected network error occurred',
-    );
+    return ServerFailure(err.message ?? 'An unexpected network error occurred');
   }
 }

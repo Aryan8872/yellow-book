@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:entertainer/features/offer/domain/usecases/offer_params.dart';
 import 'package:entertainer/features/offer/domain/usecases/offer_usecase.dart';
+
 import 'offers_event.dart';
 import 'offers_state.dart';
 
@@ -14,13 +15,14 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
   String? _currentCategory;
   String? _currentLocation;
   String? _currentSortBy;
+  double? _currentLat;
+  double? _currentLng;
+  double? _currentRadiusKm;
   int _currentPage = 1;
   final int _limit = 20;
 
-  OffersBloc(
-    this._getPaginatedOffersUsecase,
-    this._getOfferByIdUsecase,
-  ) : super(const OffersInitial()) {
+  OffersBloc(this._getPaginatedOffersUsecase, this._getOfferByIdUsecase)
+    : super(const OffersInitial()) {
     on<FetchOffersRequested>(_onFetchOffersRequested);
     on<LoadMoreOffersRequested>(_onLoadMoreOffersRequested);
     on<OfferSearchQueryChanged>(_onOfferSearchQueryChanged);
@@ -36,6 +38,9 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
     _currentCategory = event.category ?? _currentCategory;
     _currentLocation = event.location ?? _currentLocation;
     _currentSortBy = event.sortBy ?? _currentSortBy;
+    _currentLat = event.lat;
+    _currentLng = event.lng;
+    _currentRadiusKm = event.radiusKm ?? (event.lat != null ? 50.0 : null);
     _currentPage = event.page;
 
     if (event.refresh || state is! OffersLoaded) {
@@ -48,21 +53,23 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
         limit: event.limit,
         q: _currentQuery,
         category: _currentCategory,
-        lat: event.lat,
-        lng: event.lng,
-        radiusKm: event.radiusKm,
+        lat: _currentLat,
+        lng: _currentLng,
+        radiusKm: _currentRadiusKm,
         location: _currentLocation,
         sortBy: _currentSortBy,
         merchantId: event.merchantId,
       ),
     );
 
-    result.fold(
-      (failure) => emit(OffersError(failure.message)),
-      (paginatedEntity) {
-        final hasMore = paginatedEntity.offers.length >= event.limit &&
-            paginatedEntity.offers.length < paginatedEntity.total;
-        emit(OffersLoaded(
+    result.fold((failure) => emit(OffersError(failure.message)), (
+      paginatedEntity,
+    ) {
+      final hasMore =
+          paginatedEntity.offers.length >= event.limit &&
+          paginatedEntity.offers.length < paginatedEntity.total;
+      emit(
+        OffersLoaded(
           offers: paginatedEntity.offers,
           page: _currentPage,
           total: paginatedEntity.total,
@@ -71,9 +78,9 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
           searchQuery: _currentQuery,
           selectedCategory: _currentCategory,
           selectedLocation: _currentLocation,
-        ));
-      },
-    );
+        ),
+      );
+    });
   }
 
   Future<void> _onLoadMoreOffersRequested(
@@ -81,7 +88,9 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
     Emitter<OffersState> emit,
   ) async {
     final currentState = state;
-    if (currentState is OffersLoaded && currentState.hasMore && !currentState.isLoadingMore) {
+    if (currentState is OffersLoaded &&
+        currentState.hasMore &&
+        !currentState.isLoadingMore) {
       emit(currentState.copyWith(isLoadingMore: true));
 
       _currentPage++;
@@ -91,6 +100,9 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
           limit: _limit,
           q: _currentQuery,
           category: _currentCategory,
+          lat: _currentLat,
+          lng: _currentLng,
+          radiusKm: _currentRadiusKm,
           location: _currentLocation,
           sortBy: _currentSortBy,
         ),
@@ -99,19 +111,22 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
       result.fold(
         (failure) => emit(currentState.copyWith(isLoadingMore: false)),
         (paginatedEntity) {
-          final updatedOffers = List.of(currentState.offers)..addAll(paginatedEntity.offers);
+          final updatedOffers = List.of(currentState.offers)
+            ..addAll(paginatedEntity.offers);
           final hasMore = updatedOffers.length < paginatedEntity.total;
-          emit(OffersLoaded(
-            offers: updatedOffers,
-            page: _currentPage,
-            total: paginatedEntity.total,
-            count: paginatedEntity.count,
-            hasMore: hasMore,
-            isLoadingMore: false,
-            searchQuery: _currentQuery,
-            selectedCategory: _currentCategory,
-            selectedLocation: _currentLocation,
-          ));
+          emit(
+            OffersLoaded(
+              offers: updatedOffers,
+              page: _currentPage,
+              total: paginatedEntity.total,
+              count: paginatedEntity.count,
+              hasMore: hasMore,
+              isLoadingMore: false,
+              searchQuery: _currentQuery,
+              selectedCategory: _currentCategory,
+              selectedLocation: _currentLocation,
+            ),
+          );
         },
       );
     }
@@ -121,26 +136,36 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
     OfferSearchQueryChanged event,
     Emitter<OffersState> emit,
   ) async {
-    add(FetchOffersRequested(
-      q: event.query.isEmpty ? null : event.query,
-      category: _currentCategory,
-      location: _currentLocation,
-      page: 1,
-      refresh: true,
-    ));
+    add(
+      FetchOffersRequested(
+        q: event.query.isEmpty ? null : event.query,
+        category: _currentCategory,
+        lat: _currentLat,
+        lng: _currentLng,
+        radiusKm: _currentRadiusKm,
+        location: _currentLocation,
+        page: 1,
+        refresh: true,
+      ),
+    );
   }
 
   Future<void> _onOfferCategoryFilterChanged(
     OfferCategoryFilterChanged event,
     Emitter<OffersState> emit,
   ) async {
-    add(FetchOffersRequested(
-      q: _currentQuery,
-      category: event.category,
-      location: _currentLocation,
-      page: 1,
-      refresh: true,
-    ));
+    add(
+      FetchOffersRequested(
+        q: _currentQuery,
+        category: event.category,
+        lat: _currentLat,
+        lng: _currentLng,
+        radiusKm: _currentRadiusKm,
+        location: _currentLocation,
+        page: 1,
+        refresh: true,
+      ),
+    );
   }
 
   Future<void> _onFetchOfferDetailRequested(

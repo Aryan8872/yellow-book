@@ -27,6 +27,9 @@ class ApiEndpoints {
   static const String categories = '/categories';
   static String categoryById(String id) => '/categories/$id';
 
+  // Merchants & Branches
+  static const String branchesNear = '/merchants/branches/near';
+
   // Locations
   static const String locationsSearch = '/locations/search';
   static const String locationsReverse = '/locations/reverse';
@@ -40,5 +43,8 @@ class ApiEndpoints {
   static const String subscriptionPlans = '/payments/plans';
   static const String initiatePayment = '/payments/initiate';
   static const String verifyPayment = '/payments/verify';
+
+  // File Uploads
+  static const String uploads = '/uploads';
 }
 

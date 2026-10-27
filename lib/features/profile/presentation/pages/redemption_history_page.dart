@@ -45,7 +45,9 @@ class _RedemptionHistoryPageState extends State<RedemptionHistoryPage> {
     });
   }
 
-  List<RedemptionEntity> _filterRedemptions(List<RedemptionEntity> redemptions) {
+  List<RedemptionEntity> _filterRedemptions(
+    List<RedemptionEntity> redemptions,
+  ) {
     var filtered = redemptions;
 
     // Status filter
@@ -72,7 +74,8 @@ class _RedemptionHistoryPageState extends State<RedemptionHistoryPage> {
       final q = _searchQuery.toLowerCase();
       filtered = filtered.where((r) {
         final offerTitle = r.offerTitle.toLowerCase();
-        final merchantName = (r.merchantName ?? r.merchant?.name ?? '').toLowerCase();
+        final merchantName = (r.merchantName ?? r.merchant?.name ?? '')
+            .toLowerCase();
         return offerTitle.contains(q) || merchantName.contains(q);
       }).toList();
     }
@@ -91,7 +94,10 @@ class _RedemptionHistoryPageState extends State<RedemptionHistoryPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: AppTheme.textPrimary,
+            ),
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: Text(
@@ -113,9 +119,9 @@ class _RedemptionHistoryPageState extends State<RedemptionHistoryPage> {
             if (state is RedemptionError) {
               return _HistoryError(
                 message: state.message,
-                onRetry: () => context
-                    .read<RedemptionBloc>()
-                    .add(const FetchMyRedemptionsRequested()),
+                onRetry: () => context.read<RedemptionBloc>().add(
+                  const FetchMyRedemptionsRequested(),
+                ),
               );
             }
 
@@ -124,9 +130,11 @@ class _RedemptionHistoryPageState extends State<RedemptionHistoryPage> {
               final filteredRedemptions = _filterRedemptions(allRedemptions);
 
               return RefreshIndicator(
-                onRefresh: () => Future.sync(() => context
-                    .read<RedemptionBloc>()
-                    .add(const FetchMyRedemptionsRequested())),
+                onRefresh: () => Future.sync(
+                  () => context.read<RedemptionBloc>().add(
+                    const FetchMyRedemptionsRequested(),
+                  ),
+                ),
                 child: Column(
                   children: [
                     // Search bar
@@ -165,7 +173,9 @@ class _RedemptionHistoryPageState extends State<RedemptionHistoryPage> {
                     Expanded(
                       child: filteredRedemptions.isEmpty
                           ? _HistoryEmpty(
-                              isFiltered: _searchQuery.isNotEmpty || _selectedStatus != 'All',
+                              isFiltered:
+                                  _searchQuery.isNotEmpty ||
+                                  _selectedStatus != 'All',
                               query: _searchQuery,
                               status: _selectedStatus,
                               onClear: () {
@@ -181,7 +191,8 @@ class _RedemptionHistoryPageState extends State<RedemptionHistoryPage> {
                                 vertical: 12,
                               ),
                               itemCount: filteredRedemptions.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 12),
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 12),
                               itemBuilder: (context, index) => _HistoryRow(
                                 redemption: filteredRedemptions[index],
                               ),
@@ -222,7 +233,11 @@ class _SearchBar extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.only(left: 14),
-            child: Icon(Icons.search_rounded, color: AppTheme.textSecondary, size: 20),
+            child: Icon(
+              Icons.search_rounded,
+              color: AppTheme.textSecondary,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -247,7 +262,11 @@ class _SearchBar extends StatelessWidget {
           ),
           if (controller.text.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.clear_rounded, size: 18, color: AppTheme.textMuted),
+              icon: const Icon(
+                Icons.clear_rounded,
+                size: 18,
+                color: AppTheme.textMuted,
+              ),
               onPressed: onClear,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -267,7 +286,13 @@ class _StatusChipRow extends StatelessWidget {
     required this.onStatusChanged,
   });
 
-  final List<String> _statuses = const ['All', 'Active', 'Redeemed', 'Expired', 'Cancelled'];
+  final List<String> _statuses = const [
+    'All',
+    'Active',
+    'Redeemed',
+    'Expired',
+    'Cancelled',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -364,8 +389,11 @@ class _HistoryError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                color: Color(0xFFEF4444), size: 48),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFEF4444),
+              size: 48,
+            ),
             const SizedBox(height: 14),
             Text(
               'Couldn\'t load your redemptions',
@@ -387,9 +415,7 @@ class _HistoryError extends StatelessWidget {
             const SizedBox(height: 18),
             TextButton(
               onPressed: onRetry,
-              style: TextButton.styleFrom(
-                foregroundColor: AppTheme.darkPill,
-              ),
+              style: TextButton.styleFrom(foregroundColor: AppTheme.darkPill),
               child: const Text('Retry loading'),
             ),
           ],
@@ -512,9 +538,7 @@ class _HistoryEmpty extends StatelessWidget {
             const SizedBox(height: 16),
             TextButton(
               onPressed: onClear,
-              style: TextButton.styleFrom(
-                foregroundColor: AppTheme.darkPill,
-              ),
+              style: TextButton.styleFrom(foregroundColor: AppTheme.darkPill),
               child: const Text('Clear filters'),
             ),
           ],
@@ -528,119 +552,164 @@ class _HistoryRow extends StatelessWidget {
   final RedemptionEntity redemption;
   const _HistoryRow({required this.redemption});
 
-  String _formatDate(DateTime dt) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final r = redemption;
-    final merchant = r.merchantName ?? r.merchant?.name ?? 'Merchant Partner';
-    final branchName = r.branch?.name;
-    final district = r.branch?.district;
-    final locationLine = branchName != null
-        ? (district != null && district.isNotEmpty ? '$branchName · $district' : branchName)
-        : 'No branch selected';
+    final isPending = r.status == 'INIT' || r.status == 'PENDING';
+    final isCompleted = r.status == 'REDEEMED' || r.status == 'COMPLETED';
+    final isExpired = r.status == 'EXPIRED' ||
+        (r.expiresAt != null && r.expiresAt!.isBefore(DateTime.now()));
+    final isCancelled = r.status == 'REJECTED' || r.status == 'CANCELLED';
 
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RedemptionDetailPage(redemption: r),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.cardSurface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.borderSubtle, width: 1.0),
-          boxShadow: AppTheme.softCardShadow,
-        ),
-        child: Row(
-          children: [
-            // Icon circle
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFF667EEA).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
+    String resolvedStatus = r.status;
+    if (resolvedStatus == 'INIT' || resolvedStatus == 'PENDING_SYNC') {
+      final expiresAt = r.expiresAt;
+      if (expiresAt != null && expiresAt.isBefore(DateTime.now())) {
+        resolvedStatus = 'EXPIRED';
+      }
+    }
+
+    final code = r.redemptionCode ??
+        (r.id.isNotEmpty ? r.id.substring(0, 8).toUpperCase() : '');
+
+    String timeText = '';
+    if (isPending && r.expiresAt != null) {
+      final remaining = r.expiresAt!.difference(DateTime.now());
+      if (remaining.inSeconds > 0) {
+        final hours = remaining.inHours;
+        final minutes = remaining.inMinutes % 60;
+        final seconds = remaining.inSeconds % 60;
+        if (hours > 0) {
+          timeText = '${hours}h ${minutes}m ${seconds}s remaining';
+        } else {
+          timeText = '${minutes}m ${seconds}s remaining';
+        }
+      } else {
+        timeText = 'Expired';
+      }
+    } else if (isCompleted) {
+      timeText = 'Redeemed';
+    } else if (isExpired) {
+      timeText = 'Expired';
+    } else if (isCancelled) {
+      timeText = 'Cancelled';
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardSurface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1.0),
+        boxShadow: AppTheme.softCardShadow,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            final redemptionBloc = context.read<RedemptionBloc>();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => RedemptionDetailPage(
+                  redemption: r,
+                  redemptionBloc: redemptionBloc,
+                ),
               ),
-              child: const Icon(
-                Icons.confirmation_num_outlined,
-                color: Color(0xFF667EEA),
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 14),
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    r.offerTitle.isNotEmpty ? r.offerTitle : 'Special Offer',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    merchant,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    locationLine,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.textMuted,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Status and date
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                StatusBadge(status: r.status),
-                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        r.merchantName ?? r.merchant?.name ?? 'Merchant Partner',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    StatusBadge(status: resolvedStatus),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  _formatDate(r.redeemedAt),
+                  r.offerTitle.isNotEmpty ? r.offerTitle : 'Special Offer',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textMuted,
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.3,
                   ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.qr_code_2_rounded,
+                          size: 18,
+                          color: AppTheme.accentPeriwinkle,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          code,
+                          style: GoogleFonts.spaceMono(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.5,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          isPending
+                              ? Icons.access_time_rounded
+                              : Icons.info_outline_rounded,
+                          size: 14,
+                          color: isPending &&
+                                  r.expiresAt != null &&
+                                  r.expiresAt!.isAfter(DateTime.now())
+                              ? AppTheme.savingsGreen
+                              : AppTheme.textMuted,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          timeText,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isPending &&
+                                    r.expiresAt != null &&
+                                    r.expiresAt!.isAfter(DateTime.now())
+                                ? AppTheme.savingsGreen
+                                : AppTheme.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+

@@ -13,9 +13,11 @@ class RedemptionRepositoryImpl implements RedemptionRepository {
 
   @override
   Future<Either<Failure, RedemptionEntity>> initRedemption(
-      String offerId) async {
+    String offerId, {
+    String? branchId,
+  }) async {
     try {
-      final dto = await remote.initRedemption(offerId);
+      final dto = await remote.initRedemption(offerId, branchId: branchId);
       return Right(dto.toEntity());
     } on DioException catch (e) {
       return Left(ErrorInterceptor.mapDioExceptionToFailure(e));

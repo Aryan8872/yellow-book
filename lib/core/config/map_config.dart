@@ -5,21 +5,19 @@ class MapConfig {
   /// Uses environment variable GEOAPIFY_MAP_KEY
   /// Build parity: flutter build apk --debug --dart-define=GEOAPIFY_MAP_KEY=<key>
   static String get styleUrl {
-    const apiKey = String.fromEnvironment('GEOAPIFY_MAP_KEY', defaultValue: '');
-    if (apiKey.isEmpty) {
-      // No key present - explicit error state will be shown by the map page
-      // This prevents silent fallback to country-colored fills (D6)
-      return '';
+    const apiKey = String.fromEnvironment(
+      'GEOAPIFY_MAP_KEY',
+      defaultValue: '',
+    );
+    if (apiKey.isNotEmpty) {
+      return 'https://maps.geoapify.com/v1/styles/osm-bright/style.json?apiKey=$apiKey';
     }
-    return 'https://maps.geoapify.com/v1/styles/osm-bright/style.json?apiKey=$apiKey';
+    // Fallback demo tiles style matching web base-map.tsx
+    return 'https://demotiles.maplibre.org/style.json';
   }
 
-  /// Whether a valid map key is present
-  /// Used by map page/bloc to route to error state when false
-  static bool get hasMapKey {
-    const apiKey = String.fromEnvironment('GEOAPIFY_MAP_KEY', defaultValue: '');
-    return apiKey.isNotEmpty;
-  }
+  /// Whether a valid map key or style is present
+  static bool get hasMapKey => styleUrl.isNotEmpty;
 
   /// Map attribution text
   static const String attribution = ' Geoapify ·  OpenMapTiles ·  OpenStreetMap contributors';

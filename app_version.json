@@ -1,7 +1,7 @@
 {
-  "latest_build_number": 11,
-  "latest_version_name": "1.0.11",
+  "latest_build_number": 12,
+  "latest_version_name": "1.0.12",
   "apk_download_url": "https://github.com/Aryan8872/yellow-book/releases/latest/download/app-release.apk",
-  "release_notes": "• UI changes",
+  "release_notes": "• Review section added \n UI CHANGES \n new redemption flow UI",
   "is_force_update": false
 }

@@ -2,7 +2,9 @@ import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'dart:async';
+
 import 'core/di/service_loader.dart';
 import 'core/layout/main_shell_screen.dart';
 import 'core/services/push_notification_service.dart';
@@ -19,10 +21,14 @@ import 'dart:developer' as developer;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Custom error widget instead of gray/black screen on uncaught build errors
   ErrorWidget.builder = (FlutterErrorDetails details) {
-    developer.log('Flutter Error caught: ${details.exception}', error: details.exception, stackTrace: details.stack);
+    developer.log(
+      'Flutter Error caught: ${details.exception}',
+      error: details.exception,
+      stackTrace: details.stack,
+    );
     return Scaffold(
       backgroundColor: const Color(0xFFEDEBF8),
       body: Center(
@@ -31,11 +37,19 @@ void main() async {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 48),
+              const Icon(
+                Icons.error_outline_rounded,
+                color: Color(0xFFEF4444),
+                size: 48,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Something went wrong',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111116)),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF111116),
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -58,7 +72,11 @@ void main() async {
     // Initialise FCM push notifications after Firebase is ready
     await PushNotificationService().init();
   } catch (e, st) {
-    developer.log('Firebase initialization error (proceeding with fallback): $e', error: e, stackTrace: st);
+    developer.log(
+      'Firebase initialization error (proceeding with fallback): $e',
+      error: e,
+      stackTrace: st,
+    );
   }
 
   try {
@@ -117,9 +135,7 @@ class _MyAppState extends State<MyApp> {
     if (uri.path.startsWith('/reset/')) {
       final token = uri.pathSegments.last;
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ResetPasswordPage(token: token),
-        ),
+        MaterialPageRoute(builder: (_) => ResetPasswordPage(token: token)),
       );
     }
   }
@@ -162,12 +178,18 @@ class _AuthGate extends StatelessWidget {
       builder: (context, state) {
         if (state is AuthAuthenticated) {
           return MainShellScreen(user: state.user);
+        } else if (state is AuthProfileUpdating) {
+          return MainShellScreen(user: state.user);
+        } else if (state is AuthProfileUpdateFailure) {
+          return MainShellScreen(user: state.user);
         } else if (state is AuthLoading) {
           return const Scaffold(
             backgroundColor: AppTheme.canvasBg,
             body: Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentPeriwinkle),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppTheme.accentPeriwinkle,
+                ),
               ),
             ),
           );

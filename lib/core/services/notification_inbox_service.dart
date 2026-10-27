@@ -52,7 +52,7 @@ class NotificationInboxService {
   NotificationInboxService({FlutterSecureStorage? secureStorage})
       : _secureStorage = secureStorage ??
             const FlutterSecureStorage(
-              aOptions: AndroidOptions(),
+              aOptions: AndroidOptions(resetOnError: true),
               iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
             );
 

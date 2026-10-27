@@ -323,11 +323,11 @@ class _CategoryOfferCard extends StatelessWidget {
                     height: 150,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       height: 150,
                       color: AppTheme.surfaceSubtle,
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       height: 150,
                       color: AppTheme.surfaceSubtle,
                       child: const Center(

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:entertainer/features/offer/domain/usecases/redemption_usecase.dart';
+
 import 'redemption_event.dart';
 import 'redemption_state.dart';
 
@@ -26,7 +27,10 @@ class RedemptionBloc extends Bloc<RedemptionEvent, RedemptionState> {
     Emitter<RedemptionState> emit,
   ) async {
     emit(const RedemptionLoading());
-    final result = await _initRedemption.call(event.offerId);
+    final result = await _initRedemption.call(
+      event.offerId,
+      branchId: event.branchId,
+    );
     result.fold(
       (failure) => emit(RedemptionError(failure.message)),
       (redemption) => emit(RedemptionSuccess(redemption)),
@@ -38,7 +42,7 @@ class RedemptionBloc extends Bloc<RedemptionEvent, RedemptionState> {
     Emitter<RedemptionState> emit,
   ) async {
     emit(const RedemptionLoading());
-    final result = await _getMyRedemptions.call();
+    final result = await _getMyRedemptions.call(offerId: event.offerId);
     result.fold(
       (failure) => emit(RedemptionError(failure.message)),
       (list) => emit(RedemptionHistoryLoaded(list)),
@@ -51,9 +55,31 @@ class RedemptionBloc extends Bloc<RedemptionEvent, RedemptionState> {
   ) async {
     emit(const RedemptionLoading());
     final result = await _cancelRedemption.call(event.sessionId);
-    result.fold(
-      (failure) => emit(RedemptionError(failure.message)),
-      (_) => emit(const RedemptionCancelSuccess()),
+    final cancelled = result.fold(
+      (failure) {
+        emit(RedemptionError(failure.message));
+        return false;
+      },
+      (_) {
+        emit(
+          RedemptionCancelSuccess(
+            sessionId: event.sessionId,
+            status: 'REJECTED',
+          ),
+        );
+        return true;
+      },
+    );
+    if (!cancelled) return;
+
+    final historyResult = await _getMyRedemptions.call();
+    historyResult.fold(
+      (failure) => emit(
+        RedemptionError(
+          'Cancellation succeeded, but redemption history could not be refreshed: ${failure.message}',
+        ),
+      ),
+      (redemptions) => emit(RedemptionHistoryLoaded(redemptions)),
     );
   }
 }

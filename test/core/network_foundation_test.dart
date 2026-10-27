@@ -12,7 +12,10 @@ void main() {
     test('BaseUrls resolves expected endpoints', () {
       expect(BaseUrls.androidEmulator, 'http://10.0.2.2:3000/api/v1');
       expect(BaseUrls.localHost, 'http://localhost:3000/api/v1');
-      expect(BaseUrls.production, 'https://yellow-bookapi-production.up.railway.app/api/v1');
+      expect(
+        BaseUrls.production,
+        'https://yellow-bookapi-production.up.railway.app/api/v1',
+      );
       expect(BaseUrls.current.isNotEmpty, isTrue);
     });
 
@@ -21,7 +24,10 @@ void main() {
       expect(ApiEndpoints.register, '/auth/register');
       expect(ApiEndpoints.refresh, '/auth/refresh');
       expect(ApiEndpoints.offersHome, '/offers/home');
-      expect(ApiEndpoints.redeemInit('offer-123'), '/offers/offer-123/redeem-init');
+      expect(
+        ApiEndpoints.redeemInit('offer-123'),
+        '/offers/offer-123/redeem-init',
+      );
     });
 
     test('ApiResponse parses NestJS TransformResponseInterceptor envelope successfully', () {
@@ -68,6 +74,7 @@ void main() {
       expect(failure, isA<AuthFailure>());
       expect(failure.message, 'Token expired or invalid');
       expect(failure.errorCode, 'UNAUTHORIZED');
+      expect(failure.statusCode, 401);
     });
 
     test('ErrorInterceptor maps connection timeout to NetworkFailure', () {
@@ -80,20 +87,23 @@ void main() {
       expect(failure, isA<NetworkFailure>());
     });
 
-    test('TokenStorage initializes, saves, and clears in memory without crashing', () {
-      final storage = TokenStorage();
-      expect(storage.accessToken, isNull);
-      expect(storage.hasAccess(), isFalse);
+    test(
+      'TokenStorage initializes, saves, and clears in memory without crashing',
+      () {
+        final storage = TokenStorage();
+        expect(storage.accessToken, isNull);
+        expect(storage.hasAccess(), isFalse);
 
-      storage.save('access_123', 'refresh_456');
-      expect(storage.accessToken, 'access_123');
-      expect(storage.refreshToken, 'refresh_456');
-      expect(storage.hasAccess(), isTrue);
+        storage.save('access_123', 'refresh_456');
+        expect(storage.accessToken, 'access_123');
+        expect(storage.refreshToken, 'refresh_456');
+        expect(storage.hasAccess(), isTrue);
 
-      storage.clear();
-      expect(storage.accessToken, isNull);
-      expect(storage.refreshToken, isNull);
-      expect(storage.hasAccess(), isFalse);
-    });
+        storage.clear();
+        expect(storage.accessToken, isNull);
+        expect(storage.refreshToken, isNull);
+        expect(storage.hasAccess(), isFalse);
+      },
+    );
   });
 }

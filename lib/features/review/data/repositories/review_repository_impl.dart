@@ -1,9 +1,13 @@
 import 'package:dartz/dartz.dart';
-import 'package:entertainer/core/error/failures.dart';
+import 'package:dio/dio.dart';
+import 'package:entertainer/core/errors/failure.dart';
+import 'package:entertainer/core/network/interceptors/error_interceptor.dart';
 import 'package:entertainer/features/review/data/datasources/remote/review_remote_datasource.dart';
 import 'package:entertainer/features/review/domain/entities/review_entity.dart';
 import 'package:entertainer/features/review/domain/repositories/review_repository.dart';
+import 'package:injectable/injectable.dart';
 
+@LazySingleton(as: ReviewRepository)
 class ReviewRepositoryImpl implements ReviewRepository {
   final ReviewRemoteDatasource remoteDatasource;
 
@@ -30,6 +34,8 @@ class ReviewRepositoryImpl implements ReviewRepository {
         limit: limit,
       );
       return Right(reviews);
+    } on DioException catch (e) {
+      return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -46,6 +52,8 @@ class ReviewRepositoryImpl implements ReviewRepository {
         merchantId: merchantId,
       );
       return Right(summary);
+    } on DioException catch (e) {
+      return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -70,6 +78,8 @@ class ReviewRepositoryImpl implements ReviewRepository {
         photos: photos,
       );
       return Right(review);
+    } on DioException catch (e) {
+      return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -92,6 +102,8 @@ class ReviewRepositoryImpl implements ReviewRepository {
         photos: photos,
       );
       return Right(review);
+    } on DioException catch (e) {
+      return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -102,6 +114,8 @@ class ReviewRepositoryImpl implements ReviewRepository {
     try {
       await remoteDatasource.deleteReview(id);
       return const Right(null);
+    } on DioException catch (e) {
+      return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -112,6 +126,8 @@ class ReviewRepositoryImpl implements ReviewRepository {
     try {
       final review = await remoteDatasource.markHelpful(reviewId);
       return Right(review);
+    } on DioException catch (e) {
+      return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -122,6 +138,8 @@ class ReviewRepositoryImpl implements ReviewRepository {
     try {
       final review = await remoteDatasource.removeHelpful(reviewId);
       return Right(review);
+    } on DioException catch (e) {
+      return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -136,6 +154,8 @@ class ReviewRepositoryImpl implements ReviewRepository {
     try {
       await remoteDatasource.reportReview(reviewId, reason, comment);
       return const Right(null);
+    } on DioException catch (e) {
+      return Left(ErrorInterceptor.mapDioExceptionToFailure(e));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

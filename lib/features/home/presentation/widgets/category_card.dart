@@ -316,8 +316,7 @@ class _CategoryCardFromApiState extends State<CategoryCardFromApi> {
               final color = _pastelPalette[index % _pastelPalette.length];
               return GestureDetector(
                 onTap: () {
-                  setState(() => _selectedIndex = isSelected ? -1 : index);
-                  widget.onCategoryTap(isSelected ? '' : cat.name);
+                  widget.onCategoryTap(cat.name);
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 220),

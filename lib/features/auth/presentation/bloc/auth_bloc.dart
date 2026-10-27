@@ -9,6 +9,7 @@ import 'package:entertainer/features/auth/domain/usecases/update_profile_usecase
 import 'package:entertainer/features/auth/domain/usecases/google_auth_usecase.dart';
 import 'package:entertainer/features/auth/domain/usecases/forgot_password_usecase.dart';
 import 'package:entertainer/features/auth/domain/usecases/reset_password_usecase.dart';
+import 'package:entertainer/core/errors/failure.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_event.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -106,12 +107,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     final currentState = state;
-    if (currentState is! AuthAuthenticated) {
+    final currentUser = switch (currentState) {
+      AuthAuthenticated(:final user) => user,
+      AuthProfileUpdating(:final user) => user,
+      AuthProfileUpdateFailure(:final user) => user,
+      _ => null,
+    };
+    if (currentUser == null) {
       emit(const AuthError('User not authenticated'));
       return;
     }
 
-    emit(const AuthLoading());
+    emit(AuthProfileUpdating(currentUser));
     final result = await _updateProfileUsecase.call(
       UpdateProfileParams(
         name: event.name,
@@ -119,10 +126,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         avatarUrl: event.avatarUrl,
       ),
     );
-    result.fold(
-      (error) => emit(AuthError(error.message)),
-      (user) => emit(AuthAuthenticated(user)),
-    );
+    result.fold((error) {
+      if (error is AuthFailure && error.statusCode == 401) {
+        emit(
+          const AuthError(
+            'Your session has expired or been revoked. Please sign in again.',
+          ),
+        );
+        return;
+      }
+      emit(AuthProfileUpdateFailure(currentUser, error.message));
+    }, (user) => emit(AuthAuthenticated(user)));
   }
 
   Future<void> _onGoogleLoginRequested(

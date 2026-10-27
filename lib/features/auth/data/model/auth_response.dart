@@ -29,6 +29,7 @@ class SafeUserResponse {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final DateTime? deletedAt;
+  final String? avatarUrl;
 
   SafeUserResponse({
     required this.id,
@@ -41,6 +42,7 @@ class SafeUserResponse {
     required this.createdAt,
     this.deletedAt,
     this.updatedAt,
+    this.avatarUrl,
   });
 
   factory SafeUserResponse.fromJson(Map<String, dynamic> json) {
@@ -48,6 +50,7 @@ class SafeUserResponse {
       id: json['id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       name: json['name']?.toString() ?? json['full_name']?.toString() ?? '',
+      avatarUrl: json['avatarUrl']?.toString() ?? json['avatar_url']?.toString(),
       phone: json['phone']?.toString() ??
           json['phoneNumber']?.toString() ??
           json['phone_number']?.toString() ??

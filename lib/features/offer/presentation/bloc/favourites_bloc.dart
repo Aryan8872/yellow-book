@@ -26,12 +26,14 @@ class FavouritesState {
   final List<OfferEntity> favourites;
   final bool isLoading;
   final String? error;
+  final String? actionMessage;
 
   const FavouritesState({
     this.favouriteIds = const {},
     this.favourites = const [],
     this.isLoading = false,
     this.error,
+    this.actionMessage,
   });
 
   FavouritesState copyWith({
@@ -39,12 +41,17 @@ class FavouritesState {
     List<OfferEntity>? favourites,
     bool? isLoading,
     String? error,
+    String? actionMessage,
+    bool clearActionMessage = false,
   }) {
     return FavouritesState(
       favouriteIds: favouriteIds ?? this.favouriteIds,
       favourites: favourites ?? this.favourites,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      actionMessage: clearActionMessage
+          ? null
+          : (actionMessage ?? this.actionMessage),
     );
   }
 
@@ -58,14 +65,16 @@ class FavouritesState {
           setEquals(favouriteIds, other.favouriteIds) &&
           listEquals(favourites, other.favourites) &&
           isLoading == other.isLoading &&
-          error == other.error;
+          error == other.error &&
+          actionMessage == other.actionMessage;
 
   @override
   int get hashCode =>
       favouriteIds.hashCode ^
       favourites.hashCode ^
       isLoading.hashCode ^
-      error.hashCode;
+      error.hashCode ^
+      actionMessage.hashCode;
 }
 
 // ── BLoC ──────────────────────────────────────────────────────────────────────
@@ -86,8 +95,13 @@ class FavouritesBloc extends Bloc<FavouritesEvent, FavouritesState> {
     emit(state.copyWith(isLoading: true));
     try {
       final offers = await _dataSource.getFavourites();
-      final ids = offers.map((o) => o.id ?? '').where((id) => id.isNotEmpty).toSet();
-      emit(state.copyWith(favourites: offers, favouriteIds: ids, isLoading: false));
+      final ids = offers
+          .map((o) => o.id ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      emit(
+        state.copyWith(favourites: offers, favouriteIds: ids, isLoading: false),
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
@@ -112,7 +126,13 @@ class FavouritesBloc extends Bloc<FavouritesEvent, FavouritesState> {
     } else {
       optimisticIds.add(event.offerId);
     }
-    emit(state.copyWith(favouriteIds: optimisticIds, favourites: optimisticFavourites));
+    emit(
+      state.copyWith(
+        favouriteIds: optimisticIds,
+        favourites: optimisticFavourites,
+        clearActionMessage: true,
+      ),
+    );
 
     try {
       final isNowFavourite = await _dataSource.toggleFavourite(event.offerId);
@@ -123,14 +143,24 @@ class FavouritesBloc extends Bloc<FavouritesEvent, FavouritesState> {
       } else {
         reconciledIds.remove(event.offerId);
       }
-      emit(state.copyWith(favouriteIds: reconciledIds));
-    } catch (_) {
+      emit(
+        state.copyWith(
+          favouriteIds: reconciledIds,
+          actionMessage: isNowFavourite
+              ? 'Added to favorites'
+              : 'Removed from favorites',
+        ),
+      );
+    } catch (error) {
       // Revert optimistic update on error: restore the EXACT pre-toggle
       // snapshot (independent copies — no shared mutable reference).
-      emit(state.copyWith(
-        favouriteIds: Set<String>.from(previousIds),
-        favourites: List<OfferEntity>.from(previousFavourites),
-      ));
+      emit(
+        state.copyWith(
+          favouriteIds: Set<String>.from(previousIds),
+          favourites: List<OfferEntity>.from(previousFavourites),
+          actionMessage: 'Could not update favorite: $error',
+        ),
+      );
     }
   }
 }

@@ -26,6 +26,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: dto.user.email,
         name: dto.user.name,
         phone: dto.user.phone,
+        avatarUrl: dto.user.avatarUrl,
       );
       return Right(user);
     } on DioException catch (e) {
@@ -56,6 +57,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: dto.user.email,
         name: dto.user.name,
         phone: dto.user.phone,
+        avatarUrl: dto.user.avatarUrl,
       );
       return Right(user);
     } on DioException catch (e) {
@@ -74,6 +76,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: safeUser.email,
         name: safeUser.name,
         phone: safeUser.phone,
+        avatarUrl: safeUser.avatarUrl,
       );
       return Right(user);
     } on DioException catch (e) {
@@ -128,6 +131,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: safeUser.email,
         name: safeUser.name,
         phone: safeUser.phone,
+        avatarUrl: safeUser.avatarUrl,
       );
       return Right(user);
     } on DioException catch (e) {
@@ -147,6 +151,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: dto.user.email,
         name: dto.user.name,
         phone: dto.user.phone,
+        avatarUrl: dto.user.avatarUrl,
       );
       return Right(user);
     } on DioException catch (e) {

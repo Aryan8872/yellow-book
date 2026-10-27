@@ -1,5 +1,5 @@
 import 'package:dartz/dartz.dart';
-import 'package:entertainer/core/error/failures.dart';
+import 'package:entertainer/core/errors/failure.dart';
 import 'package:entertainer/features/review/domain/entities/review_entity.dart';
 
 abstract class ReviewRepository {

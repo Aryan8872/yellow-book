@@ -23,9 +23,14 @@ final class RedemptionError extends RedemptionState {
   const RedemptionError(this.message);
 }
 
-/// Redemption cancelled successfully
 final class RedemptionCancelSuccess extends RedemptionState {
-  const RedemptionCancelSuccess();
+  final String sessionId;
+  final String status;
+
+  const RedemptionCancelSuccess({
+    required this.sessionId,
+    required this.status,
+  });
 }
 
 /// History loaded state

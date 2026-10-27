@@ -27,6 +27,22 @@ class AppTheme {
   static const Color cardSurface = Color(0xFFFFFFFF);
   static const Color surfaceSubtle = Color(0xFFF3F2F9);
 
+  // DESIGN (1).md — OfferNepal Experience System Tokens
+  static const Color crimsonPrimary = Color(0xFFE11D48); // Himalayan Crimson
+  static const Color crimsonDark = Color(0xFFB80035);
+  static const Color crimsonLightBg = Color(0xFFFFF1F2);
+  static const Color emeraldJade = Color(0xFF059669); // Emerald Jade
+  static const Color emeraldDark = Color(0xFF047857);
+  static const Color emeraldLightBg = Color(0xFFECFDF5);
+  static const Color amberFlame = Color(0xFFF59E0B);
+
+  // Surface Containers (DESIGN (1).md)
+  static const Color surfaceContainerLowest = Color(0xFFFFFFFF);
+  static const Color surfaceContainerLow = Color(0xFFF2F3FF);
+  static const Color surfaceContainer = Color(0xFFEAEDFF);
+  static const Color surfaceContainerHigh = Color(0xFFE2E7FF);
+  static const Color surfaceContainerHighest = Color(0xFFDAE2FD);
+
   // Pitch Black Onyx Anchors (Screenshot Top Header & Pill Dock)
   static const Color darkAnchor = Color(0xFF0D0D12);
   static const Color darkPill = Color(0xFF111116);
@@ -49,17 +65,19 @@ class AppTheme {
   static const Color accentAmberDark = Color(0xFFE8B82B);
 
   // Functional Status
-  static const Color savingsGreen = Color(0xFF10B981);
+  static const Color savingsGreen = emeraldJade;
   static const Color errorRed = Color(0xFFEF4444);
 
   // Borders & Outlines
-  static const Color borderSubtle = Color(0xFFE5E3F0);
+  static const Color borderSubtle = Color(0xFFE2E8F0);
   static const Color borderLight = Color(0xFFEAE8F4);
+  static const Color borderMedium = Color(0xFFCBD5E1);
+  static const Color surfaceDark = Color(0xFF0F172A);
 
   // Typography
-  static const Color textPrimary = Color(0xFF0D0D12);
-  static const Color textSecondary = Color(0xFF707284);
-  static const Color textMuted = Color(0xFF9E9FB0);
+  static const Color textPrimary = Color(0xFF0F172A);
+  static const Color textSecondary = Color(0xFF475569);
+  static const Color textMuted = Color(0xFF94A3B8);
   static const Color textOnDark = Colors.white;
 
   // Legacy aliases

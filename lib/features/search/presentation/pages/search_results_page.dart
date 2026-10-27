@@ -3,14 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
-import 'package:entertainer/core/widgets/category_pill_row.dart';
-import 'package:entertainer/features/map/presentation/pages/map_discovery_page.dart';
-import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_bloc.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_event.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_state.dart';
-import 'package:entertainer/features/offer/presentation/pages/offer_detail_page.dart';
-import 'package:entertainer/features/home/data/datasources/category_remote_datasource.dart';
+import 'package:entertainer/features/offer/presentation/bloc/favourites_bloc.dart';
+import 'package:entertainer/features/search/presentation/widgets/rich_offer_card.dart';
+import 'package:entertainer/features/search/presentation/widgets/offer_filter_bottom_sheet.dart';
+import 'package:entertainer/core/widgets/skeleton_loader.dart';
 
 class SearchResultsPage extends StatelessWidget {
   final String query;
@@ -19,6 +18,7 @@ class SearchResultsPage extends StatelessWidget {
   final double? lng;
   final double? radiusKm;
   final String? placeLabel;
+  final OfferFilterCriteria? initialCriteria;
 
   const SearchResultsPage({
     super.key,
@@ -28,26 +28,35 @@ class SearchResultsPage extends StatelessWidget {
     this.lng,
     this.radiusKm,
     this.placeLabel,
+    this.initialCriteria,
   });
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => getIt<OffersBloc>()
-        ..add(FetchOffersRequested(
-          q: query.isNotEmpty ? query : null,
-          category: initialCategory,
-          lat: lat,
-          lng: lng,
-          radiusKm: radiusKm,
-          page: 1,
-          limit: 20,
-          refresh: true,
-        )),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => getIt<OffersBloc>()
+            ..add(FetchOffersRequested(
+              q: query.isNotEmpty ? query : null,
+              category: initialCriteria?.category ?? initialCategory,
+              lat: lat,
+              lng: lng,
+              radiusKm: initialCriteria?.radiusKm ?? radiusKm,
+              page: 1,
+              limit: 20,
+              refresh: true,
+            )),
+        ),
+        BlocProvider(
+          create: (_) => getIt<FavouritesBloc>()..add(const FavouritesLoadRequested()),
+        ),
+      ],
       child: _SearchResultsView(
         query: query,
         initialCategory: initialCategory,
         placeLabel: placeLabel,
+        initialCriteria: initialCriteria,
       ),
     );
   }
@@ -57,8 +66,14 @@ class _SearchResultsView extends StatefulWidget {
   final String query;
   final String? initialCategory;
   final String? placeLabel;
+  final OfferFilterCriteria? initialCriteria;
 
-  const _SearchResultsView({required this.query, this.initialCategory, this.placeLabel});
+  const _SearchResultsView({
+    required this.query,
+    this.initialCategory,
+    this.placeLabel,
+    this.initialCriteria,
+  });
 
   @override
   State<_SearchResultsView> createState() => _SearchResultsViewState();
@@ -67,51 +82,28 @@ class _SearchResultsView extends StatefulWidget {
 class _SearchResultsViewState extends State<_SearchResultsView> {
   late TextEditingController _searchController;
   late ScrollController _scrollController;
-  final CategoryRemoteDataSource _categoryDataSource = getIt<CategoryRemoteDataSource>();
 
-  List<CategoryModel> _categories = [];
-  bool _categoriesLoading = true;
-  bool _categoriesError = false;
-  String? _selectedCategory;
+  late OfferFilterCriteria _currentCriteria;
+  String _selectedSort = 'Recommended';
+
+  final List<String> _sortOptions = [
+    'Recommended',
+    'Distance: Near to Far',
+    'Discount: High to Low',
+    'Price: Low to High',
+  ];
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController(text: widget.query);
-    _selectedCategory = widget.initialCategory;
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
-    _loadCategories();
-  }
 
-  Future<void> _loadCategories() async {
-    setState(() {
-      _categoriesLoading = true;
-      _categoriesError = false;
-    });
-
-    try {
-      final categories = await _categoryDataSource.getCategories();
-      if (mounted) {
-        setState(() {
-          _categories = categories;
-          _categoriesLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _categoriesLoading = false;
-          _categoriesError = true;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Couldn\'t load categories'),
-            duration: Duration(seconds: 2),
-          ),
+    _currentCriteria = widget.initialCriteria ??
+        OfferFilterCriteria(
+          category: widget.initialCategory,
         );
-      }
-    }
   }
 
   void _onScroll() {
@@ -127,21 +119,87 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
     }
   }
 
-  void _triggerSearch(String q, {String? category}) {
-    final selectedCat = category ?? _selectedCategory;
-    final cat = selectedCat == 'All' ? null : selectedCat;
-    context.read<OffersBloc>().add(FetchOffersRequested(
-          q: q.trim().isEmpty ? null : q.trim(),
-          category: cat,
-          page: 1,
-          limit: 20,
-          refresh: true,
-        ));
-    // Reset scroll to top
+  void _triggerSearch({OfferFilterCriteria? criteria}) {
+    final effective = criteria ?? _currentCriteria;
+    context.read<OffersBloc>().add(
+      FetchOffersRequested(
+        q: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+        category: effective.category,
+        radiusKm: effective.radiusKm,
+        page: 1,
+        limit: 20,
+        refresh: true,
+      ),
+    );
     _scrollController.animateTo(
       0,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
+    );
+  }
+
+  Future<void> _openFilterDialog() async {
+    final updated = await OfferFilterBottomSheet.show(
+      context,
+      initialCriteria: _currentCriteria,
+    );
+
+    if (updated != null && mounted) {
+      setState(() {
+        _currentCriteria = updated;
+      });
+      _triggerSearch(criteria: updated);
+    }
+  }
+
+  void _showSortDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.cardSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Text(
+                'Sort Offers By',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            const Divider(),
+            ..._sortOptions.map((opt) {
+              final isChosen = _selectedSort == opt;
+              return ListTile(
+                title: Text(
+                  opt,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: isChosen ? FontWeight.w800 : FontWeight.w600,
+                    color: isChosen ? AppTheme.crimsonPrimary : AppTheme.textPrimary,
+                  ),
+                ),
+                trailing: isChosen
+                    ? const Icon(Icons.check_rounded, color: AppTheme.crimsonPrimary)
+                    : null,
+                onTap: () {
+                  setState(() => _selectedSort = opt);
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 
@@ -159,449 +217,506 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
+            // ── Sticky Sub-Header matching search_result_page_ui.html ─────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+              decoration: BoxDecoration(
+                color: AppTheme.canvasBg.withValues(alpha: 0.95),
+                border: const Border(
+                  bottom: BorderSide(color: AppTheme.borderLight, width: 0.8),
+                ),
+              ),
+              child: Column(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppTheme.textPrimary),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardSurface,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: AppTheme.softCardShadow,
+                  Row(
+                    children: [
+                      // Back Button
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardSurface,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.borderLight),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
+                            size: 18,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 2),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.search_rounded,
-                              color: AppTheme.textPrimary, size: 22),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              onSubmitted: (v) => _triggerSearch(v),
-                              textInputAction: TextInputAction.search,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textPrimary,
+                      // Search pill input
+                      Expanded(
+                        child: Container(
+                          height: 46,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardSurface,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF131B2E).withValues(alpha: 0.05),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
                               ),
-                              decoration: InputDecoration(
-                                hintText:
-                                    'Search restaurants, stores, offers...',
-                                hintStyle: GoogleFonts.plusJakartaSans(
-                                    color: AppTheme.textMuted, fontSize: 13),
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                contentPadding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.search_rounded, size: 20, color: AppTheme.textMuted),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  onSubmitted: (_) => _triggerSearch(),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                  decoration: InputDecoration(
+                                    border: InputBorder.none,
+                                    hintText: 'Search momo, spa, dining...',
+                                    hintStyle: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13.5,
+                                      color: AppTheme.textMuted,
+                                    ),
+                                    isDense: true,
+                                  ),
+                                ),
                               ),
+                              if (_searchController.text.isNotEmpty)
+                                GestureDetector(
+                                  onTap: () {
+                                    _searchController.clear();
+                                    _triggerSearch();
+                                  },
+                                  child: const Icon(Icons.close_rounded, size: 16, color: AppTheme.textMuted),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Filter Trigger Button with Badge Counter
+                      GestureDetector(
+                        onTap: _openFilterDialog,
+                        child: Container(
+                          height: 46,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: _currentCriteria.activeCount > 0
+                                ? AppTheme.surfaceDark
+                                : AppTheme.cardSurface,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF131B2E).withValues(alpha: 0.05),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.tune_rounded,
+                                size: 18,
+                                color: _currentCriteria.activeCount > 0
+                                    ? Colors.white
+                                    : AppTheme.crimsonPrimary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Filters',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: _currentCriteria.activeCount > 0
+                                      ? Colors.white
+                                      : AppTheme.textPrimary,
+                                ),
+                              ),
+                              if (_currentCriteria.activeCount > 0) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: const BoxDecoration(
+                                    color: AppTheme.crimsonPrimary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${_currentCriteria.activeCount}',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ── Active Filter Badges Rail ──────────────────────────────
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        if (_currentCriteria.radiusKm != null)
+                          _buildRemovableFilterBadge(
+                            icon: Icons.near_me_rounded,
+                            label: 'Within ${_currentCriteria.radiusKm!.toInt()} km',
+                            onRemove: () {
+                              setState(() {
+                                _currentCriteria = _currentCriteria.copyWith(clearRadius: true);
+                              });
+                              _triggerSearch();
+                            },
+                          ),
+                        if (_currentCriteria.minRating != null)
+                          _buildRemovableFilterBadge(
+                            icon: Icons.star_rounded,
+                            label: '${_currentCriteria.minRating}+ Stars',
+                            onRemove: () {
+                              setState(() {
+                                _currentCriteria = _currentCriteria.copyWith(clearRating: true);
+                              });
+                              _triggerSearch();
+                            },
+                          ),
+                        if (_currentCriteria.minDiscountPercent != null)
+                          _buildRemovableFilterBadge(
+                            icon: Icons.percent_rounded,
+                            label: '${_currentCriteria.minDiscountPercent}%+ OFF',
+                            onRemove: () {
+                              setState(() {
+                                _currentCriteria = _currentCriteria.copyWith(clearDiscount: true);
+                              });
+                              _triggerSearch();
+                            },
+                          ),
+                        if (_currentCriteria.category != null)
+                          _buildRemovableFilterBadge(
+                            icon: Icons.category_rounded,
+                            label: _currentCriteria.category!,
+                            onRemove: () {
+                              setState(() {
+                                _currentCriteria = _currentCriteria.copyWith(clearCategory: true);
+                              });
+                              _triggerSearch();
+                            },
+                          ),
+                        GestureDetector(
+                          onTap: _openFilterDialog,
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardSurface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppTheme.borderLight),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.add_rounded, size: 14, color: AppTheme.textMuted),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'More Filters',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textMuted,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          if (_searchController.text.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded,
-                                  size: 18, color: AppTheme.textSecondary),
-                              onPressed: () {
-                                _searchController.clear();
-                                _triggerSearch('');
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkAnchor,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.darkAnchor.withValues(alpha: 0.25),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
                         ),
                       ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.map_outlined,
-                          color: Colors.white, size: 22),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const MapDiscoveryPage()),
-                        );
-                      },
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 8),
-
-            // Category filter chips
-            CategoryPillRow(
-              categories: _categories,
-              selectedCategory: _selectedCategory,
-              onSelected: (category) {
-                setState(() => _selectedCategory = category);
-                _triggerSearch(_searchController.text, category: category);
-              },
-              isLoading: _categoriesLoading,
-              hasError: _categoriesError,
-            ),
-
-            const SizedBox(height: 12),
-
-            // Result count / Title
-            BlocBuilder<OffersBloc, OffersState>(
-              builder: (context, state) {
-                if (widget.placeLabel != null) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      'Offers near ${widget.placeLabel}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                  );
-                }
-                if (state is OffersLoaded) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${state.offers.length} results',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textMuted,
-                          ),
-                        ),
-                        if (state.total != null && state.total > state.offers.length)
+            // ── Meta Count & Sort Header ─────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: BlocBuilder<OffersBloc, OffersState>(
+                builder: (context, state) {
+                  int count = 0;
+                  if (state is OffersLoaded) {
+                    count = state.total > 0 ? state.total : state.offers.length;
+                  }
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
                           Text(
-                            ' of ${state.total}',
+                            '$count offers',
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            widget.placeLabel != null
+                                ? 'in ${widget.placeLabel}'
+                                : 'in Kathmandu Valley',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                               color: AppTheme.textMuted,
                             ),
                           ),
-                      ],
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-
-            const SizedBox(height: 12),
-
-            const SizedBox(height: 8),
-
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  _triggerSearch(_searchController.text, category: _selectedCategory);
-                },
-                child: BlocBuilder<OffersBloc, OffersState>(
-                  builder: (context, state) {
-                    if (state is OffersLoading) return _buildSkeletonList();
-                    if (state is OffersError) return _buildError(state.message);
-                    if (state is OffersLoaded) {
-                      if (state.offers.isEmpty) return _buildEmpty();
-                      return _buildList(state);
-                    }
-                    return _buildSkeletonList();
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSkeletonList() {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-      itemCount: 6,
-      itemBuilder: (_, __) => _SkeletonCard(),
-    );
-  }
-
-  Widget _buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.search_off_rounded,
-              size: 56, color: AppTheme.textMuted),
-          const SizedBox(height: 14),
-          Text('No offers found',
-              style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.textSecondary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          Text('Try a different search or category',
-              style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.textMuted, fontSize: 13)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildError(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.wifi_off_rounded,
-              size: 48, color: AppTheme.textMuted),
-          const SizedBox(height: 12),
-          Text('Could not load results',
-              style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.textSecondary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          Text(message,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.textMuted, fontSize: 12)),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () => _triggerSearch(_searchController.text),
-            child: Text('Retry',
-                style: GoogleFonts.plusJakartaSans(
-                    color: AppTheme.accentPeriwinkleDark,
-                    fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildList(OffersLoaded state) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-      physics: const BouncingScrollPhysics(),
-      itemCount: state.offers.length + (state.isLoadingMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == state.offers.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final offer = state.offers[index];
-        return _OfferResultCard(
-          offer: offer,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => OfferDetailPage(offer: offer)),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _OfferResultCard extends StatelessWidget {
-  final OfferEntity offer;
-  final VoidCallback onTap;
-  const _OfferResultCard({required this.offer, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final discountText = offer.discountPercentage != null
-        ? '${offer.discountPercentage}% OFF'
-        : offer.estimatedSavingsNpr > 0
-            ? 'Save NPR ${offer.estimatedSavingsNpr}'
-            : 'Special Offer';
-
-    final categoryLabel = _titleCase(offer.category.name);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.cardSurface,
-          borderRadius: BorderRadius.circular(26),
-          boxShadow: AppTheme.softCardShadow,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: offer.imageUrl != null && offer.imageUrl!.isNotEmpty
-                    ? Image.network(offer.imageUrl!,
-                        width: 58,
-                        height: 58,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _iconBox(offer.category.name))
-                    : _iconBox(offer.category.name),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      offer.merchantName ?? offer.title,
-                      style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: AppTheme.textPrimary,
-                          letterSpacing: -0.2),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      offer.title,
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                          fontWeight: FontWeight.w500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        const Icon(Icons.star_rounded,
-                            size: 14, color: AppTheme.accentAmberDark),
-                        const SizedBox(width: 3),
-                        Text(offer.rating.toStringAsFixed(1),
-                            style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.textPrimary)),
-                        const SizedBox(width: 10),
-                        Text(categoryLabel,
-                            style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
+                        ],
+                      ),
+                      // Sort dropdown trigger
+                      GestureDetector(
+                        onTap: _showSortDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardSurface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.borderLight),
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Sort: ',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11.5,
+                                  color: AppTheme.textMuted,
+                                ),
+                              ),
+                              Text(
+                                _selectedSort,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.crimsonPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              const Icon(
+                                Icons.arrow_drop_down_rounded,
+                                size: 16,
                                 color: AppTheme.textMuted,
-                                fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppTheme.pastelMint,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(discountText,
-                    style: GoogleFonts.plusJakartaSans(
-                        color: AppTheme.darkAnchor,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _iconBox(String cat) {
-    IconData icon;
-    final lower = cat.toLowerCase();
-    if (lower.contains('dining') || lower.contains('food')) {
-      icon = Icons.restaurant_rounded;
-    } else if (lower.contains('hotel') || lower.contains('travel')) {
-      icon = Icons.hotel_rounded;
-    } else if (lower.contains('wellness') || lower.contains('spa')) {
-      icon = Icons.spa_rounded;
-    } else {
-      icon = Icons.local_offer_rounded;
-    }
-    return Container(
-      width: 58,
-      height: 58,
-      decoration: BoxDecoration(
-        color: AppTheme.pastelPeriwinkle.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Icon(icon, color: AppTheme.darkAnchor, size: 26),
-    );
-  }
-
-  String _titleCase(String s) {
-    if (s.isEmpty) return s;
-    return s[0].toUpperCase() + s.substring(1).toLowerCase();
-  }
-}
-
-class _SkeletonCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      height: 86,
-      decoration: BoxDecoration(
-        color: AppTheme.cardSurface,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: AppTheme.softCardShadow,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: AppTheme.borderLight,
-                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
-            const SizedBox(width: 14),
+
+            // ── Offers List ──────────────────────────────────────────────────
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                      height: 12,
-                      width: 140,
-                      color: AppTheme.borderLight,
-                      margin: const EdgeInsets.only(bottom: 8)),
-                  Container(height: 10, width: 100, color: AppTheme.borderLight),
-                ],
+              child: BlocBuilder<OffersBloc, OffersState>(
+                builder: (context, state) {
+                  if (state is OffersLoading) {
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: 4,
+                      itemBuilder: (_, _) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: SkeletonLoader(
+                          height: 280,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (state is OffersError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error_outline_rounded, size: 48, color: AppTheme.crimsonPrimary),
+                          const SizedBox(height: 12),
+                          Text(
+                            state.message,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () => _triggerSearch(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.crimsonPrimary,
+                            ),
+                            child: const Text('Try Again', style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (state is OffersLoaded) {
+                    var offers = state.offers;
+
+                    // Apply client-side filters if needed
+                    if (_currentCriteria.minRating != null) {
+                      offers = offers.where((o) => o.rating >= _currentCriteria.minRating!).toList();
+                    }
+                    if (_currentCriteria.minDiscountPercent != null) {
+                      offers = offers.where((o) => (o.discountPercentage ?? 0) >= _currentCriteria.minDiscountPercent!).toList();
+                    }
+
+                    // Apply Sort
+                    if (_selectedSort == 'Discount: High to Low') {
+                      offers = List.of(offers)..sort((a, b) => (b.discountPercentage ?? 0).compareTo(a.discountPercentage ?? 0));
+                    } else if (_selectedSort == 'Price: Low to High') {
+                      offers = List.of(offers)..sort((a, b) => (a.discountedPriceNpr ?? 0).compareTo(b.discountedPriceNpr ?? 0));
+                    }
+
+                    if (offers.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.search_off_rounded, size: 54, color: AppTheme.textMuted),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No matching deals found',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Try relaxing some filters or changing your query',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _currentCriteria = const OfferFilterCriteria();
+                                  _searchController.clear();
+                                });
+                                _triggerSearch(criteria: const OfferFilterCriteria());
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.crimsonPrimary,
+                              ),
+                              child: const Text('Reset All Filters', style: TextStyle(color: Colors.white)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: offers.length + (state.isLoadingMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == offers.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppTheme.crimsonPrimary,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: RichOfferCard(offer: offers[index]),
+                        );
+                      },
+                    );
+                  }
+
+                  return const SizedBox();
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRemovableFilterBadge({
+    required IconData icon,
+    required String label,
+    required VoidCallback onRemove,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onRemove,
+            child: const Icon(
+              Icons.cancel_rounded,
+              size: 14,
+              color: Colors.white70,
+            ),
+          ),
+        ],
       ),
     );
   }
