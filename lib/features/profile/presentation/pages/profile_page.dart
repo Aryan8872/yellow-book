@@ -726,6 +726,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             ],
                           ),
                         ),
+                        // Generous space so floating bottom bar never obscures logout button
+                        const SizedBox(height: 120),
                       ],
                     ),
                   ),

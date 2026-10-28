@@ -716,8 +716,11 @@ class _MerchantDetailPageState extends State<MerchantDetailPage> {
         ? offer.images.first
         : offer.imageUrl ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80';
 
-    final originalPrice = offer.originalPriceNpr ?? ((offer.discountedPriceNpr ?? 0) + offer.estimatedSavingsNpr);
-    final discountedPrice = offer.discountedPriceNpr ?? (originalPrice > 0 ? originalPrice - offer.estimatedSavingsNpr : 0);
+    final originalPrice = offer.originalPriceNpr ?? (offer.computedDiscountedPriceNpr + offer.computedSavingsNpr);
+    final discountedPrice = offer.computedDiscountedPriceNpr > 0
+        ? offer.computedDiscountedPriceNpr
+        : (originalPrice > offer.computedSavingsNpr ? originalPrice - offer.computedSavingsNpr : originalPrice);
+    final savingsNpr = offer.computedSavingsNpr;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -837,7 +840,9 @@ class _MerchantDetailPageState extends State<MerchantDetailPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Save Rs. ${offer.estimatedSavingsNpr.toInt()} instantly',
+                savingsNpr > 0
+                    ? 'Save Rs. $savingsNpr instantly'
+                    : 'Exclusive Member Privilege',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,

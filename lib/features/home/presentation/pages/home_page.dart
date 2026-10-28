@@ -13,6 +13,7 @@ import 'package:entertainer/features/offer/presentation/pages/offer_detail_page.
 import 'package:entertainer/features/offer/presentation/pages/category_offers_page.dart';
 import 'package:entertainer/features/profile/presentation/pages/profile_page.dart';
 import 'package:entertainer/features/home/presentation/pages/notifications_page.dart';
+import 'package:entertainer/core/services/user_location_service.dart';
 import 'package:entertainer/features/home/presentation/widgets/location_selection_modal.dart';
 import 'package:entertainer/features/search/presentation/pages/search_results_page.dart';
 import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
@@ -125,8 +126,24 @@ class _HomeViewState extends State<_HomeView> {
   @override
   void initState() {
     super.initState();
+    _loadSavedLocation();
     _loadUnreadCount();
     _fetchCategories();
+  }
+
+  Future<void> _loadSavedLocation() async {
+    try {
+      final saved = await getIt<UserLocationService>().loadSavedLocation();
+      if (saved != null && mounted) {
+        setState(() {
+          _selectedPlace = saved;
+          _currentLocation = saved.formatted;
+          _activeQuickChip = saved.district ?? saved.formatted;
+        });
+        _fetchNearbyBranches(lat: saved.lat, lng: saved.lon);
+        return;
+      }
+    } catch (_) {}
     _fetchNearbyBranches(lat: 27.7172, lng: 85.3240); // default Kathmandu center
   }
 
@@ -186,6 +203,8 @@ class _HomeViewState extends State<_HomeView> {
         _currentLocation = selected.formatted;
         _activeQuickChip = selected.district ?? selected.formatted;
       });
+      // Persist user selection
+      getIt<UserLocationService>().saveLocation(selected);
       context.read<OffersBloc>().add(
         FetchOffersRequested(
           lat: selected.lat,
@@ -209,17 +228,21 @@ class _HomeViewState extends State<_HomeView> {
       return;
     }
 
+    final newPlace = PlaceSuggestion(
+      name: chip.label,
+      formatted: chip.label,
+      lat: chip.lat!,
+      lon: chip.lon!,
+      district: chip.label,
+      confidence: 1.0,
+    );
+
     setState(() {
       _currentLocation = chip.label;
-      _selectedPlace = PlaceSuggestion(
-        name: chip.label,
-        formatted: chip.label,
-        lat: chip.lat!,
-        lon: chip.lon!,
-        district: chip.label,
-        confidence: 1.0,
-      );
+      _selectedPlace = newPlace;
     });
+
+    getIt<UserLocationService>().saveLocation(newPlace);
 
     context.read<OffersBloc>().add(
       FetchOffersRequested(
@@ -614,53 +637,92 @@ class _HomeViewState extends State<_HomeView> {
               ),
 
               SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 98,
-                  child: _isLoadingCategories
-                      ? ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          scrollDirection: Axis.horizontal,
-                          itemCount: 6,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
-                          itemBuilder: (_, __) => Column(
-                            children: [
-                              SkeletonLoader(width: 58, height: 58, borderRadius: BorderRadius.circular(18)),
-                              const SizedBox(height: 6),
-                              SkeletonLoader(width: 48, height: 12, borderRadius: BorderRadius.circular(4)),
-                            ],
+                child: _isLoadingCategories
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 0.72,
                           ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: _backendCategories.isNotEmpty ? _backendCategories.length : _fallbackCategories.length,
+                          itemCount: 8,
+                          itemBuilder: (_, __) => Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                            ),
+                            child: Column(
+                              children: [
+                                AspectRatio(
+                                  aspectRatio: 4 / 3,
+                                  child: SkeletonLoader(
+                                    height: double.infinity,
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                  ),
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.all(6.0),
+                                  child: Row(
+                                    children: [
+                                      SkeletonLoader(width: 20, height: 20, borderRadius: BorderRadius.all(Radius.circular(10))),
+                                      SizedBox(width: 4),
+                                      Expanded(
+                                        child: SkeletonLoader(width: double.infinity, height: 10, borderRadius: BorderRadius.all(Radius.circular(4))),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 0.72,
+                          ),
+                          itemCount: _backendCategories.isNotEmpty
+                              ? _backendCategories.length
+                              : _fallbackCategories.length,
                           itemBuilder: (context, index) {
                             if (_backendCategories.isNotEmpty) {
                               final cat = _backendCategories[index];
-                              final isFirst = index == 0;
-                              return _buildCategorySquare(
+                              return _buildCategoryGridCard(
                                 name: cat.name,
+                                subtitle: _subtitleForCategory(cat.slug),
                                 icon: _iconForCategory(cat.slug),
-                                bgColor: isFirst ? AppTheme.crimsonPrimary : _bgColorForIndex(index),
-                                iconColor: isFirst ? Colors.white : _iconColorForIndex(index),
-                                isActive: isFirst,
+                                iconBgColor: _categoryBadgeColor(cat.slug, index),
+                                imageUrl: cat.imageUrl,
+                                fallbackAsset: _fallbackAssetForCategory(cat.slug),
                                 onTap: () => _navigateToSearch('', category: cat.name),
                               );
                             } else {
                               final cat = _fallbackCategories[index];
-                              return _buildCategorySquare(
+                              return _buildCategoryGridCard(
                                 name: cat.name,
+                                subtitle: _subtitleForCategory(cat.name),
                                 icon: cat.icon,
-                                bgColor: cat.bgColor,
-                                iconColor: cat.iconColor,
-                                isActive: index == 0,
+                                iconBgColor: cat.bgColor,
+                                imageUrl: null,
+                                fallbackAsset: _fallbackAssetForCategory(cat.name),
                                 onTap: () => _navigateToSearch('', category: cat.name),
                               );
                             }
                           },
                         ),
-                ),
+                      ),
               ),
 
               // ── 4. Deal of the Day Spotlight Hero ────────────────────────
@@ -866,7 +928,9 @@ class _HomeViewState extends State<_HomeView> {
                                                     const Icon(Icons.local_fire_department_rounded, size: 14, color: AppTheme.crimsonPrimary),
                                                     const SizedBox(width: 2),
                                                     Text(
-                                                      '142 bought today',
+                                                      dealOfTheDay.reviewsCount > 0
+                                                          ? '${dealOfTheDay.reviewsCount}+ verified reviews'
+                                                          : 'Popular Deal',
                                                       style: GoogleFonts.plusJakartaSans(
                                                         fontSize: 11,
                                                         fontWeight: FontWeight.w800,
@@ -1880,6 +1944,240 @@ class _HomeViewState extends State<_HomeView> {
     (name: 'Getaways', icon: Icons.flight_takeoff_rounded, bgColor: Color(0xFFDAE2FD), iconColor: Color(0xFF006C4A)),
     (name: 'Salon', icon: Icons.face_retouching_natural_rounded, bgColor: Color(0xFFFFDADA), iconColor: Color(0xFF920028)),
   ];
+
+  String _subtitleForCategory(String slug) {
+    switch (slug.toLowerCase()) {
+      case 'dining':
+      case 'food':
+      case 'restaurant':
+        return 'Great food';
+      case 'hotel':
+      case 'hotels':
+      case 'getaways':
+      case 'travel':
+        return 'Comfort stay';
+      case 'shop':
+      case 'shopping':
+      case 'retail':
+        return 'Best deals';
+      case 'electrical':
+      case 'electronics':
+        return 'Smart living';
+      case 'wellness':
+      case 'spa':
+      case 'salon':
+      case 'beauty':
+        return 'Relax & refresh';
+      case 'auto':
+      case 'automotive':
+        return 'Drive easy';
+      case 'home':
+        return 'Better living';
+      case 'activities':
+      case 'entertainment':
+        return 'Explore more';
+      default:
+        return 'Top offers';
+    }
+  }
+
+  Color _categoryBadgeColor(String slug, int index) {
+    switch (slug.toLowerCase()) {
+      case 'dining':
+      case 'food':
+      case 'restaurant':
+        return const Color(0xFFDC2626); // red-600
+      case 'hotel':
+      case 'hotels':
+      case 'travel':
+      case 'getaways':
+        return const Color(0xFF2563EB); // blue-600
+      case 'shop':
+      case 'shopping':
+      case 'retail':
+        return const Color(0xFFF59E0B); // amber-500
+      case 'electrical':
+      case 'electronics':
+        return const Color(0xFF9333EA); // purple-600
+      case 'wellness':
+      case 'spa':
+        return const Color(0xFF059669); // emerald-600
+      case 'auto':
+      case 'automotive':
+        return const Color(0xFFE11D48); // rose-600
+      case 'home':
+        return const Color(0xFF1D4ED8); // blue-700
+      case 'activities':
+      case 'entertainment':
+        return const Color(0xFF14B8A6); // teal-500
+      default:
+        return _iconColorForIndex(index);
+    }
+  }
+
+  String? _fallbackAssetForCategory(String slug) {
+    switch (slug.toLowerCase()) {
+      case 'dining':
+      case 'food':
+      case 'restaurant':
+        return 'assets/category/dining.png';
+      case 'hotel':
+      case 'hotels':
+      case 'travel':
+      case 'getaways':
+        return 'assets/category/hotels.png';
+      case 'activities':
+      case 'entertainment':
+        return 'assets/category/activities.png';
+      case 'shop':
+      case 'shopping':
+      case 'discounts':
+        return 'assets/category/discounts.png';
+      default:
+        return null;
+    }
+  }
+
+  Widget _buildCategoryGridCard({
+    required String name,
+    required String subtitle,
+    required IconData icon,
+    required Color iconBgColor,
+    required String? imageUrl,
+    required String? fallbackAsset,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.black.withValues(alpha: 0.06),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Top aspect image
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (imageUrl != null && imageUrl.isNotEmpty)
+                    Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildPlaceholderPhoto(fallbackAsset, iconBgColor, icon),
+                    )
+                  else
+                    _buildPlaceholderPhoto(fallbackAsset, iconBgColor, icon),
+                ],
+              ),
+            ),
+            // Bottom info bar (Icon badge + title + subtitle + arrow)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 4, 6),
+              child: Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: iconBgColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: iconBgColor.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        icon,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                            height: 1.1,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textSecondary,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 11,
+                    color: AppTheme.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderPhoto(String? fallbackAsset, Color bgColor, IconData fallbackIcon) {
+    if (fallbackAsset != null) {
+      return Image.asset(
+        fallbackAsset,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: bgColor.withValues(alpha: 0.12),
+          child: Center(
+            child: Icon(fallbackIcon, size: 24, color: bgColor),
+          ),
+        ),
+      );
+    }
+    return Container(
+      color: bgColor.withValues(alpha: 0.12),
+      child: Center(
+        child: Icon(fallbackIcon, size: 24, color: bgColor),
+      ),
+    );
+  }
 
   Widget _buildCategorySquare({
     required String name,

@@ -65,6 +65,7 @@ import '../../features/review/domain/repositories/review_repository.dart'
 import '../../features/review/presentation/bloc/review_bloc.dart' as _i610;
 import '../network/dio_client.dart' as _i667;
 import '../storage/token_storage.dart' as _i973;
+import '../services/user_location_service.dart' as _i974;
 import 'dependency_injection.dart' as _i9;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -83,6 +84,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i973.TokenStorage>(
       () => dependencyInjection.tokenStorage,
+    );
+    gh.lazySingleton<_i974.UserLocationService>(
+      () => _i974.UserLocationService(),
     );
     gh.lazySingleton<_i361.Dio>(
       () => dependencyInjection.dio(gh<_i973.TokenStorage>()),

@@ -143,7 +143,20 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
           emit(previousState);
         }
       },
-      (review) => emit(ReviewHelpfulMarked(review)),
+      (review) {
+        if (previousState is ReviewsLoaded) {
+          final updatedList = previousState.reviews.map((r) {
+            return r.id == review.id ? review : r;
+          }).toList();
+          emit(ReviewsLoaded(
+            reviews: updatedList,
+            total: previousState.total,
+            page: previousState.page,
+            hasMore: previousState.hasMore,
+          ));
+        }
+        emit(ReviewHelpfulMarked(review));
+      },
     );
   }
 
@@ -160,7 +173,20 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
           emit(previousState);
         }
       },
-      (review) => emit(ReviewHelpfulRemoved(review)),
+      (review) {
+        if (previousState is ReviewsLoaded) {
+          final updatedList = previousState.reviews.map((r) {
+            return r.id == review.id ? review : r;
+          }).toList();
+          emit(ReviewsLoaded(
+            reviews: updatedList,
+            total: previousState.total,
+            page: previousState.page,
+            hasMore: previousState.hasMore,
+          ));
+        }
+        emit(ReviewHelpfulRemoved(review));
+      },
     );
   }
 

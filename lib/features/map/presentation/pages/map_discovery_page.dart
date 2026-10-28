@@ -201,10 +201,9 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
   }
 
   Future<void> _confirmMapLocation(MapLoadedState state) async {
-    final coordinate =
-        _pickerTarget ??
-        _mapController?.cameraPosition?.target ??
-        state.browseLocation;
+    // If user panned the map, ensure latest camera target is read directly
+    final currentCamTarget = _mapController?.cameraPosition?.target;
+    final coordinate = currentCamTarget ?? _pickerTarget ?? state.browseLocation;
     if (coordinate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Choose a location on the map first.')),

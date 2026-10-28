@@ -115,6 +115,35 @@ class OfferEntity {
     this.branches = const [],
   });
 
+  /// Computes true savings in NPR even if estimatedSavingsNpr was defaulted to 0 in backend
+  int get computedSavingsNpr {
+    if (estimatedSavingsNpr > 0) return estimatedSavingsNpr;
+    if (originalPriceNpr != null && originalPriceNpr! > 0) {
+      if (discountPercentage != null && discountPercentage! > 0) {
+        return (originalPriceNpr! * (discountPercentage! / 100.0)).round();
+      }
+      if (discountedPriceNpr != null && originalPriceNpr! > discountedPriceNpr!) {
+        return originalPriceNpr! - discountedPriceNpr!;
+      }
+    }
+    return 0;
+  }
+
+  /// Computes effective discounted price in NPR
+  int get computedDiscountedPriceNpr {
+    if (discountedPriceNpr != null && discountedPriceNpr! > 0) {
+      return discountedPriceNpr!;
+    }
+    if (originalPriceNpr != null && originalPriceNpr! > 0) {
+      final savings = computedSavingsNpr;
+      if (savings > 0 && originalPriceNpr! > savings) {
+        return originalPriceNpr! - savings;
+      }
+      return originalPriceNpr!;
+    }
+    return 0;
+  }
+
   /// Map representation for backward compatibility with old widgets
   Map<String, String> toLegacyMap() {
     final effectiveBranches = branches.isNotEmpty ? branches : (merchant?.branches ?? const []);

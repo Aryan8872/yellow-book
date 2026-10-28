@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
+import 'package:entertainer/core/services/user_location_service.dart';
+import 'package:entertainer/core/di/service_loader.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/features/home/data/datasources/category_remote_datasource.dart';
 import 'package:entertainer/features/home/presentation/widgets/location_selection_modal.dart';
@@ -68,7 +71,53 @@ class _SearchPageState extends State<SearchPage> {
   void initState() {
     super.initState();
     _activeLocationScope = widget.initialLocation ?? 'Kathmandu Valley';
+    _restoreLocationPreference();
     _loadInitialData();
+  }
+
+  Future<void> _restoreLocationPreference() async {
+    try {
+      final saved = await getIt<UserLocationService>().loadSavedLocation();
+      if (saved != null && mounted) {
+        setState(() {
+          _selectedPlace = saved;
+          _activeLocationScope = saved.formatted;
+          _activeLat = saved.lat;
+          _activeLng = saved.lon;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleNearMeHub() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+        final pos = await Geolocator.getCurrentPosition(timeLimit: const Duration(seconds: 5));
+        final reverse = await PlacesRemoteDataSource().reverse(lat: pos.latitude, lon: pos.longitude);
+        final label = reverse.isNotEmpty ? reverse.first.name : 'Current Location';
+        _navigateToResults(
+          '',
+          lat: pos.latitude,
+          lng: pos.longitude,
+          placeLabel: label,
+          criteria: const OfferFilterCriteria(radiusKm: 2.0),
+        );
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback to active coordinates if permission denied
+    _navigateToResults(
+      '',
+      lat: _activeLat ?? 27.7172,
+      lng: _activeLng ?? 85.3240,
+      placeLabel: 'Near Me (<2km)',
+      criteria: const OfferFilterCriteria(radiusKm: 2.0),
+    );
   }
 
   Future<void> _loadInitialData() async {
@@ -382,6 +431,11 @@ class _SearchPageState extends State<SearchPage> {
                       final hub = _lifestyleHubs[index];
                       return GestureDetector(
                         onTap: () {
+                          if (index == 0) {
+                            // Near Me (<2km) uses real GPS location
+                            _handleNearMeHub();
+                            return;
+                          }
                           setState(() {
                             _activeLocationScope = hub.label;
                             _activeLat = hub.lat;
@@ -392,6 +446,7 @@ class _SearchPageState extends State<SearchPage> {
                             lat: hub.lat,
                             lng: hub.lng,
                             placeLabel: hub.label,
+                            criteria: const OfferFilterCriteria(radiusKm: 5.0),
                           );
                         },
                         child: Container(

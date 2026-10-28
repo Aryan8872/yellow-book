@@ -119,13 +119,16 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
     }
   }
 
-  void _triggerSearch({OfferFilterCriteria? criteria}) {
+  void _triggerSearch({OfferFilterCriteria? criteria, bool clearRadius = false}) {
     final effective = criteria ?? _currentCriteria;
+    final effectiveRadius = clearRadius ? null : effective.radiusKm;
     context.read<OffersBloc>().add(
       FetchOffersRequested(
         q: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
         category: effective.category,
-        radiusKm: effective.radiusKm,
+        lat: effectiveRadius != null ? widget.lat : null,
+        lng: effectiveRadius != null ? widget.lng : null,
+        radiusKm: effectiveRadius,
         page: 1,
         limit: 20,
         refresh: true,
@@ -419,32 +422,6 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                               _triggerSearch();
                             },
                           ),
-                        GestureDetector(
-                          onTap: _openFilterDialog,
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: AppTheme.cardSurface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppTheme.borderLight),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.add_rounded, size: 14, color: AppTheme.textMuted),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'More Filters',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.textMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -617,6 +594,23 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                                 color: AppTheme.textMuted,
                               ),
                             ),
+                            if (_currentCriteria.radiusKm != null) ...[
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _currentCriteria = _currentCriteria.copyWith(clearRadius: true);
+                                  });
+                                  _triggerSearch(clearRadius: true);
+                                },
+                                icon: const Icon(Icons.travel_explore_rounded, size: 16),
+                                label: const Text('Search Nationwide (No Radius Limit)'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppTheme.crimsonPrimary,
+                                  side: const BorderSide(color: AppTheme.crimsonPrimary),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 16),
                             ElevatedButton(
                               onPressed: () {
@@ -624,7 +618,7 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                                   _currentCriteria = const OfferFilterCriteria();
                                   _searchController.clear();
                                 });
-                                _triggerSearch(criteria: const OfferFilterCriteria());
+                                _triggerSearch(criteria: const OfferFilterCriteria(), clearRadius: true);
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.crimsonPrimary,
