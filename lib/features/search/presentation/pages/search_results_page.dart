@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -162,6 +163,20 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
       });
       _triggerSearch(criteria: updated);
     }
+  }
+
+  /// Haversine great-circle distance in km between two coordinate pairs.
+  double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
+    const r = 6371.0;
+    final dLat = (lat2 - lat1) * math.pi / 180;
+    final dLng = (lng2 - lng1) * math.pi / 180;
+    final sinDLat = math.sin(dLat / 2);
+    final sinDLng = math.sin(dLng / 2);
+    final a = sinDLat * sinDLat +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            sinDLng * sinDLng;
+    return 2 * r * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 
   void _showSortDialog() {
@@ -577,8 +592,19 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                     if (_selectedSort == 'Discount: High to Low') {
                       offers = List.of(offers)..sort((a, b) => (b.discountPercentage ?? 0).compareTo(a.discountPercentage ?? 0));
                     } else if (_selectedSort == 'Price: Low to High') {
-                      offers = List.of(offers)..sort((a, b) => (a.discountedPriceNpr ?? 0).compareTo(b.discountedPriceNpr ?? 0));
+                      offers = List.of(offers)..sort((a, b) => a.computedDiscountedPriceNpr.compareTo(b.computedDiscountedPriceNpr));
+                    } else if (_selectedSort == 'Distance: Near to Far') {
+                      final userLat = widget.lat;
+                      final userLng = widget.lng;
+                      if (userLat != null && userLng != null) {
+                        offers = List.of(offers)..sort((a, b) {
+                          final distA = _haversineKm(a.lat, a.lng, userLat, userLng);
+                          final distB = _haversineKm(b.lat, b.lng, userLat, userLng);
+                          return distA.compareTo(distB);
+                        });
+                      }
                     }
+                    // 'Recommended' → backend order preserved (no sort needed)
 
                     if (offers.isEmpty) {
                       return Center(

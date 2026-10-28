@@ -52,6 +52,7 @@ class RedemptionModel {
       name: name,
       address: map['address']?.toString(),
       district: map['district']?.toString(),
+      phone: map['phone']?.toString(),
       lat: _toDouble(map['lat']),
       lng: _toDouble(map['lng']),
     );

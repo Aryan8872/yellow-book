@@ -10,7 +10,7 @@ import 'package:entertainer/features/offer/presentation/pages/offer_detail_page.
 import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
 import 'package:entertainer/features/auth/domain/entities/user.dart';
-import 'package:entertainer/features/search/presentation/pages/search_page.dart';
+import 'package:entertainer/core/layout/main_shell_screen.dart';
 
 class FavouritesPage extends StatelessWidget {
   const FavouritesPage({super.key});
@@ -179,9 +179,9 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 28),
           ElevatedButton.icon(
-            onPressed: user != null ? () => Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const SearchPage()),
-            ) : null,
+            onPressed: () {
+              MainShellScreen.switchTab(context, 1);
+            },
             icon: const Icon(Icons.explore_rounded, size: 18),
             label: const Text('Browse Offers'),
             style: ElevatedButton.styleFrom(

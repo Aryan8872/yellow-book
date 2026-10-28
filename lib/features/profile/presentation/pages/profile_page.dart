@@ -7,6 +7,7 @@ import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_event.dart';
 import 'package:entertainer/features/auth/presentation/pages/edit_profile_page.dart';
+import 'package:entertainer/features/auth/presentation/pages/login_page.dart';
 import 'package:entertainer/features/subscription/presentation/pages/subscription_page.dart';
 import 'package:entertainer/features/offer/data/datasource/redemption_remote_datasource.dart';
 import 'package:entertainer/features/offer/data/model/redemption_model.dart';
@@ -26,7 +27,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   List<RedemptionModel> _redemptions = [];
-  String _currentVersion = 'v1.0.12+12';
+  String _currentVersion = 'v1.0.13+13';
 
   @override
   void initState() {
@@ -83,9 +84,16 @@ class _ProfilePageState extends State<ProfilePage> {
               backgroundColor: AppTheme.crimsonPrimary,
               elevation: 0,
             ),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
               context.read<AuthBloc>().add(const LogoutRequested());
+              // Allow a frame for AuthBloc to update, then pop all routes so
+              // _AuthGate at the root rebuilds to LoginPage.
+              await Future<void>.delayed(Duration.zero);
+              if (context.mounted) {
+                Navigator.of(context, rootNavigator: true)
+                    .popUntil((route) => route.isFirst);
+              }
             },
             child: const Text('Sign Out', style: TextStyle(color: Colors.white)),
           ),
@@ -937,6 +945,27 @@ class _UnauthenticatedPrompt extends StatelessWidget {
                 'Track your vouchers, savings, and membership rewards.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.crimsonPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  Navigator.of(context, rootNavigator: true)
+                      .pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+                  );
+                },
+                child: Text(
+                  'Sign In',
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
               ),
             ],
           ),

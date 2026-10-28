@@ -25,6 +25,7 @@ import 'package:entertainer/features/home/presentation/bloc/home_bloc.dart';
 import 'package:entertainer/features/home/presentation/bloc/home_state.dart';
 import 'package:entertainer/features/home/presentation/bloc/home_event.dart';
 import 'package:entertainer/features/auth/domain/entities/user.dart';
+import 'package:entertainer/core/layout/main_shell_screen.dart';
 
 import 'package:entertainer/features/home/data/datasources/category_remote_datasource.dart';
 import 'package:entertainer/features/offer/data/datasource/branch_remote_datasource.dart';
@@ -317,53 +318,80 @@ class _HomeViewState extends State<_HomeView> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Location Selector Capsule
-                      GestureDetector(
-                        onTap: _openLocationSelector,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: AppTheme.cardSurface,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.location_on_rounded,
-                                size: 16,
-                                color: AppTheme.crimsonPrimary,
-                              ),
-                              const SizedBox(width: 4),
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 110),
-                                child: Text(
-                                  _currentLocation,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                      // Brand Logo & Wordmark
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppTheme.borderLight, width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
                                 ),
-                              ),
-                              const SizedBox(width: 2),
-                              const Icon(
-                                Icons.expand_more_rounded,
-                                size: 16,
-                                color: AppTheme.textMuted,
-                              ),
-                            ],
+                              ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Image.asset(
+                              'assets/logo.jpeg',
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          // Location Selector Capsule
+                          GestureDetector(
+                            onTap: _openLocationSelector,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppTheme.cardSurface,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.location_on_rounded,
+                                    size: 15,
+                                    color: AppTheme.crimsonPrimary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 95),
+                                    child: Text(
+                                      _currentLocation,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Icon(
+                                    Icons.expand_more_rounded,
+                                    size: 15,
+                                    color: AppTheme.textMuted,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
 
                       // Actions: Notification & Avatar
@@ -419,12 +447,8 @@ class _HomeViewState extends State<_HomeView> {
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const ProfilePage(),
-                                ),
-                              );
+                              // Switch directly to Profile tab in MainShellScreen (preserving bottom navbar)
+                              MainShellScreen.switchTab(context, 4);
                             },
                             child: Container(
                               width: 36,
@@ -644,10 +668,10 @@ class _HomeViewState extends State<_HomeView> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 0.72,
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 0.82,
                           ),
                           itemCount: 8,
                           itemBuilder: (_, __) => Container(
@@ -688,10 +712,10 @@ class _HomeViewState extends State<_HomeView> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 0.72,
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 0.82,
                           ),
                           itemCount: _backendCategories.isNotEmpty
                               ? _backendCategories.length
@@ -1352,22 +1376,28 @@ class _HomeViewState extends State<_HomeView> {
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.location_on_rounded, size: 13, color: AppTheme.crimsonPrimary),
-                                                const SizedBox(width: 3),
-                                                Text(
-                                                  city,
-                                                  style: GoogleFonts.plusJakartaSans(
-                                                    fontSize: 11,
-                                                    color: AppTheme.textMuted,
+                                            Expanded(
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.location_on_rounded, size: 13, color: AppTheme.crimsonPrimary),
+                                                  const SizedBox(width: 3),
+                                                  Expanded(
+                                                    child: Text(
+                                                      city,
+                                                      style: GoogleFonts.plusJakartaSans(
+                                                        fontSize: 11,
+                                                        color: AppTheme.textMuted,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
                                                   ),
-                                                  maxLines: 1,
-                                                ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
                                             if (distKm != null)
                                               Container(
+                                                margin: const EdgeInsets.only(left: 6),
                                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                 decoration: BoxDecoration(
                                                   color: AppTheme.emeraldJade.withValues(alpha: 0.12),

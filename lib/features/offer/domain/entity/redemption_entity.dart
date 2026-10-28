@@ -139,6 +139,7 @@ class RedemptionBranchInfo {
   final String name;
   final String? address;
   final String? district;
+  final String? phone;
   final double? lat;
   final double? lng;
 
@@ -147,6 +148,7 @@ class RedemptionBranchInfo {
     required this.name,
     this.address,
     this.district,
+    this.phone,
     this.lat,
     this.lng,
   });
@@ -156,6 +158,7 @@ class RedemptionBranchInfo {
         'name': name,
         if (address != null) 'address': address,
         if (district != null) 'district': district,
+        if (phone != null) 'phone': phone,
         if (lat != null) 'lat': lat,
         if (lng != null) 'lng': lng,
       };

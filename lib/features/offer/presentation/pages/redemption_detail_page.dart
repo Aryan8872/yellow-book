@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/core/widgets/status_badge.dart';
@@ -218,14 +219,30 @@ class _RedemptionDetailPageState extends State<RedemptionDetailPage> {
   }
 
   void _callBranch() {
-    // Placeholder – phone number not available in current model
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Phone number not available for this branch'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppTheme.textSecondary,
-      ),
-    );
+    final phone = widget.redemption.branch?.phone;
+    if (phone == null || phone.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Phone number not available for this branch'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.textSecondary,
+        ),
+      );
+      return;
+    }
+    final uri = Uri(scheme: 'tel', path: phone.trim());
+    launchUrl(uri).catchError((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open dialer for $phone'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.textSecondary,
+          ),
+        );
+      }
+      return false;
+    });
   }
 
   bool get _isExpired => _remainingSeconds <= 0;
@@ -829,17 +846,26 @@ class _RedemptionDetailPageState extends State<RedemptionDetailPage> {
     final savingsNpr = (redemption.savingsNpr ?? offer.estimatedSavingsNpr ?? 0).toInt();
     final discountPct = (offer.discountPercentage ?? 0).toInt();
 
+    // Compute totalValue: use origPrice when available, else back-calculate from
+    // savings + discount %, else mark as unknown (0 means we won't show values).
     final int totalValue = origPrice > 0
         ? origPrice
-        : (savingsNpr > 0 ? (savingsNpr * 100 ~/ (discountPct > 0 ? discountPct : 30)) : 1200);
+        : (savingsNpr > 0 && discountPct > 0
+            ? (savingsNpr * 100 ~/ discountPct)
+            : 0);
 
     final int saved = savingsNpr > 0
         ? savingsNpr
-        : (discountPct > 0
+        : (totalValue > 0 && discountPct > 0
             ? (totalValue * discountPct ~/ 100)
-            : (totalValue * 30 ~/ 100));
+            : 0);
 
-    final int paidAmount = (totalValue - saved) > 0 ? (totalValue - saved) : (totalValue * 70 ~/ 100);
+    final int paidAmount = totalValue > 0 && totalValue > saved
+        ? (totalValue - saved)
+        : 0;
+
+    // Whether we have meaningful numbers to show
+    final bool hasFinancialData = totalValue > 0 || saved > 0;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -880,41 +906,68 @@ class _RedemptionDetailPageState extends State<RedemptionDetailPage> {
           ),
           const SizedBox(height: 12),
 
-          // 3-pill financial grid
-          Row(
-            children: [
-              // Total Value
-              Expanded(
-                child: _MetricPill(
-                  label: 'Total Value',
-                  value: 'Rs. $totalValue',
-                  bgColor: AppTheme.surfaceContainerLow,
-                  textColor: AppTheme.textPrimary,
-                  isStrikethrough: true,
+          // 3-pill financial grid — only shown when actual pricing data exists
+          if (hasFinancialData)
+            Row(
+              children: [
+                // Total Value
+                Expanded(
+                  child: _MetricPill(
+                    label: 'Total Value',
+                    value: 'Rs. $totalValue',
+                    bgColor: AppTheme.surfaceContainerLow,
+                    textColor: AppTheme.textPrimary,
+                    isStrikethrough: true,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Paid Amount
+                Expanded(
+                  child: _MetricPill(
+                    label: 'Paid Amount',
+                    value: 'Rs. $paidAmount',
+                    bgColor: AppTheme.crimsonPrimary.withValues(alpha: 0.1),
+                    textColor: AppTheme.crimsonPrimary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // You Saved
+                Expanded(
+                  child: _MetricPill(
+                    label: 'You Saved',
+                    value: 'Rs. $saved',
+                    bgColor: AppTheme.emeraldJade.withValues(alpha: 0.1),
+                    textColor: AppTheme.emeraldJade,
+                  ),
+                ),
+              ],
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.emeraldJade.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.emeraldJade.withValues(alpha: 0.2),
                 ),
               ),
-              const SizedBox(width: 8),
-              // Paid Amount
-              Expanded(
-                child: _MetricPill(
-                  label: 'Paid Amount',
-                  value: 'Rs. $paidAmount',
-                  bgColor: AppTheme.crimsonPrimary.withValues(alpha: 0.1),
-                  textColor: AppTheme.crimsonPrimary,
-                ),
+              child: Row(
+                children: [
+                  Icon(Icons.card_giftcard_rounded, size: 18, color: AppTheme.emeraldJade),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Privilege Deal Applied',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.emeraldJade,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              // You Saved
-              Expanded(
-                child: _MetricPill(
-                  label: 'You Saved',
-                  value: 'Rs. $saved',
-                  bgColor: AppTheme.emeraldJade.withValues(alpha: 0.1),
-                  textColor: AppTheme.emeraldJade,
-                ),
-              ),
-            ],
-          ),
+            ),
           const SizedBox(height: 12),
 
           // Dates

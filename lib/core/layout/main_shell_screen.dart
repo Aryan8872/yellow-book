@@ -24,6 +24,15 @@ class MainShellScreen extends StatefulWidget {
 
   const MainShellScreen({super.key, required this.user});
 
+  /// Static helper allowing child widgets (e.g. HomePage header, Favourites empty state)
+  /// to switch tabs within the persistent shell without losing bottom navigation.
+  static void switchTab(BuildContext context, int tabIndex) {
+    final state = context.findAncestorStateOfType<_MainShellScreenState>();
+    if (state != null) {
+      state._onTabTapped(tabIndex);
+    }
+  }
+
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
 }
@@ -160,15 +169,17 @@ class _OfferNepalFAB extends StatelessWidget {
           label: 'OfferNepal Deals',
           button: true,
           child: Center(
-            child: Image.asset(
-              'assets/logo.jpeg',
-              width: 32,
-              height: 32,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.local_offer_rounded,
-                color: Colors.white,
-                size: 26,
+            child: ClipOval(
+              child: Image.asset(
+                'assets/logo.jpeg',
+                width: 38,
+                height: 38,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.local_offer_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
               ),
             ),
           ),
