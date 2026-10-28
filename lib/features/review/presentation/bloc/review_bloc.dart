@@ -150,7 +150,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
           }).toList();
           emit(ReviewsLoaded(
             reviews: updatedList,
-            total: previousState.total,
             page: previousState.page,
             hasMore: previousState.hasMore,
           ));
@@ -180,7 +179,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
           }).toList();
           emit(ReviewsLoaded(
             reviews: updatedList,
-            total: previousState.total,
             page: previousState.page,
             hasMore: previousState.hasMore,
           ));

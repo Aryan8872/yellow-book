@@ -55,6 +55,9 @@ class SearchResultsPage extends StatelessWidget {
       child: _SearchResultsView(
         query: query,
         initialCategory: initialCategory,
+        lat: lat,
+        lng: lng,
+        radiusKm: radiusKm,
         placeLabel: placeLabel,
         initialCriteria: initialCriteria,
       ),
@@ -65,12 +68,18 @@ class SearchResultsPage extends StatelessWidget {
 class _SearchResultsView extends StatefulWidget {
   final String query;
   final String? initialCategory;
+  final double? lat;
+  final double? lng;
+  final double? radiusKm;
   final String? placeLabel;
   final OfferFilterCriteria? initialCriteria;
 
   const _SearchResultsView({
     required this.query,
     this.initialCategory,
+    this.lat,
+    this.lng,
+    this.radiusKm,
     this.placeLabel,
     this.initialCriteria,
   });
