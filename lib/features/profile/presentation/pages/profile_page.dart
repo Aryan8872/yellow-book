@@ -13,6 +13,9 @@ import 'package:entertainer/features/offer/data/model/redemption_model.dart';
 import 'package:entertainer/features/profile/presentation/pages/redemption_history_page.dart';
 import 'package:entertainer/features/profile/presentation/pages/my_vouchers_page.dart';
 import 'package:entertainer/features/offer/presentation/pages/scratch_win_page.dart';
+import 'package:entertainer/core/services/app_update_service.dart';
+import 'package:entertainer/core/services/update_available_dialog.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -23,11 +26,24 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   List<RedemptionModel> _redemptions = [];
+  String _currentVersion = 'v1.0.12+12';
 
   @override
   void initState() {
     super.initState();
     _loadRedemptions();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _currentVersion = 'v${info.version}+${info.buildNumber}';
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadRedemptions() async {
@@ -694,6 +710,34 @@ class _ProfilePageState extends State<ProfilePage> {
                                 onTap: () {},
                               ),
                               const Divider(height: 1),
+                              _buildSettingItem(
+                                icon: Icons.system_update_rounded,
+                                title: 'Check for Updates',
+                                subtitle: 'Current version: $_currentVersion',
+                                onTap: () async {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Checking for new updates...'),
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                  final updateInfo = await AppUpdateService.checkForUpdate();
+                                  if (context.mounted) {
+                                    if (updateInfo != null) {
+                                      UpdateAvailableDialog.show(context, updateInfo);
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('You are using the latest version of OfferNepal!'),
+                                          backgroundColor: AppTheme.emeraldJade,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                              const Divider(height: 1),
                               Material(
                                 color: Colors.transparent,
                                 child: ListTile(
@@ -714,7 +758,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                   ),
                                   trailing: Text(
-                                    'v2.4.1',
+                                    _currentVersion,
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 12,
                                       color: AppTheme.textMuted,

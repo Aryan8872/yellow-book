@@ -10,6 +10,8 @@ import 'package:entertainer/features/search/presentation/pages/search_page.dart'
 import 'package:entertainer/features/profile/presentation/pages/profile_page.dart';
 import 'package:entertainer/features/offer/presentation/pages/favourites_page.dart';
 import 'package:entertainer/features/offer/presentation/bloc/favourites_bloc.dart';
+import 'package:entertainer/core/services/app_update_service.dart';
+import 'package:entertainer/core/services/update_available_dialog.dart';
 
 /// Global App Shell Layout container (`MainShellScreen`)
 /// Implements a curved-notch bottom navigation bar with a floating center FAB:
@@ -42,6 +44,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
       const FavouritesPage(),
       const ProfilePage(),
     ];
+
+    // Check for in-app updates automatically on launch
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAppUpdate();
+    });
+  }
+
+  Future<void> _checkAppUpdate() async {
+    final updateInfo = await AppUpdateService.checkForUpdate();
+    if (updateInfo != null && mounted) {
+      UpdateAvailableDialog.show(context, updateInfo);
+    }
   }
 
   /// Map logical tab index to page widget index (skip center slot 2)
