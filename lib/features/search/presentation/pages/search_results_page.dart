@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
+import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_bloc.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_event.dart';
 import 'package:entertainer/features/offer/presentation/bloc/offers_state.dart';
@@ -598,8 +599,21 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                       final userLng = widget.lng;
                       if (userLat != null && userLng != null) {
                         offers = List.of(offers)..sort((a, b) {
-                          final distA = _haversineKm(a.lat, a.lng, userLat, userLng);
-                          final distB = _haversineKm(b.lat, b.lng, userLat, userLng);
+                          double minDistanceForOffer(OfferEntity o) {
+                            final effectiveBranches = o.branches.isNotEmpty
+                                ? o.branches
+                                : (o.merchant?.branches ?? const []);
+                            if (effectiveBranches.isEmpty) return double.infinity;
+                            double minD = double.infinity;
+                            for (final b in effectiveBranches) {
+                              final d = _haversineKm(b.lat, b.lng, userLat, userLng);
+                              if (d < minD) minD = d;
+                            }
+                            return minD;
+                          }
+
+                          final distA = minDistanceForOffer(a);
+                          final distB = minDistanceForOffer(b);
                           return distA.compareTo(distB);
                         });
                       }
