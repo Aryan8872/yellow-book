@@ -42,7 +42,7 @@ class CategoryMapMarkerFactory {
   }
 
   static Future<Uint8List> _renderLocationMarker() async {
-    const size = Size(72, 88);
+    const size = Size(108, 132);
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final path = Path()
@@ -72,7 +72,7 @@ class CategoryMapMarkerFactory {
       _renderCategoryMarker(categorySlug.toUpperCase());
 
   static Future<Uint8List> _renderCategoryMarker(String category) async {
-    const size = Size(72, 88);
+    const size = Size(108, 132);
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final color = _colorFor(category);
@@ -100,7 +100,7 @@ class CategoryMapMarkerFactory {
   }
 
   static Future<Uint8List> _renderClusterMarker() async {
-    const size = Size(72, 72);
+    const size = Size(108, 108);
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final bounds = const Rect.fromLTWH(5, 5, 62, 62);
@@ -233,17 +233,17 @@ class CategoryMapMarkerFactory {
   static Color _colorFor(String category) {
     switch (category) {
       case 'DINING':
-        return const Color(0xFFEF4444);
+        return const Color(0xFFFF8652);
       case 'WELLNESS':
-        return const Color(0xFF10B981);
+        return const Color(0xFF76EDB8);
       case 'ENTERTAINMENT':
-        return const Color(0xFF8B5CF6);
+        return const Color(0xFF9F8EFC);
       case 'RETAIL':
-        return const Color(0xFFE5A93C);
+        return const Color(0xFFFFD94A);
       case 'TRAVEL':
-        return const Color(0xFF3B82F6);
+        return const Color(0xFF9F8EFC);
       case 'BEAUTY':
-        return const Color(0xFFEC4899);
+        return const Color(0xFFFF5C67);
       default:
         return const Color(0xFF1A1A2E);
     }
