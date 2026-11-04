@@ -6,6 +6,7 @@ import '../network/interceptors/auth_interceptor.dart';
 import '../network/interceptors/error_interceptor.dart';
 import '../storage/token_storage.dart';
 import '../../features/auth/data/datasources/remote/auth_remote_datasource.dart';
+import '../../features/auth/data/datasources/services/google_auth_service.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/home/data/datasources/home_remote_datasource.dart';
@@ -53,6 +54,9 @@ abstract class DependencyInjection {
 
   @LazySingleton()
   AuthRemoteDatasource authRemoteDatasource(Dio dio) => AuthRemoteDataSourceImpl(dio);
+
+  @LazySingleton()
+  GoogleAuthService googleAuthService() => GoogleAuthService();
 
   @LazySingleton()
   HomeRemoteDataSource homeRemoteDataSource(Dio dio) => HomeRemoteDataSourceImpl(dio);
@@ -103,4 +107,3 @@ abstract class DependencyInjection {
   RedemptionRemoteDatasourceImpl redemptionRemoteDatasourceImpl(Dio dio) =>
       RedemptionRemoteDatasourceImpl(dio);
 }
-

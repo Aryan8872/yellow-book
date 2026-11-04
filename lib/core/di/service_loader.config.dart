@@ -11,11 +11,14 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
 import 'package:dio/dio.dart' as _i361;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 
 import '../../features/auth/data/datasources/remote/auth_remote_datasource.dart'
     as _i1022;
+import '../../features/auth/data/datasources/services/google_auth_service.dart'
+    as _i865;
 import '../../features/auth/domain/repositories/auth_repository.dart' as _i787;
 import '../../features/auth/domain/usecases/forgot_password_usecase.dart'
     as _i560;
@@ -64,8 +67,8 @@ import '../../features/review/domain/repositories/review_repository.dart'
     as _i364;
 import '../../features/review/presentation/bloc/review_bloc.dart' as _i610;
 import '../network/dio_client.dart' as _i667;
+import '../services/user_location_service.dart' as _i449;
 import '../storage/token_storage.dart' as _i973;
-import '../services/user_location_service.dart' as _i974;
 import 'dependency_injection.dart' as _i9;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -79,14 +82,19 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i406.BranchRemoteDataSource>(
       () => _i406.BranchRemoteDataSource(),
     );
-    gh.factory<_i90.PlacesRemoteDataSource>(
-      () => _i90.PlacesRemoteDataSource(),
-    );
     gh.lazySingleton<_i973.TokenStorage>(
       () => dependencyInjection.tokenStorage,
     );
-    gh.lazySingleton<_i974.UserLocationService>(
-      () => _i974.UserLocationService(),
+    gh.lazySingleton<_i865.GoogleAuthService>(
+      () => dependencyInjection.googleAuthService(),
+    );
+    gh.lazySingleton<_i449.UserLocationService>(
+      () => _i449.UserLocationService(
+        secureStorage: gh<_i558.FlutterSecureStorage>(),
+      ),
+    );
+    gh.factory<_i90.PlacesRemoteDataSource>(
+      () => _i90.PlacesRemoteDataSource(gh<_i361.Dio>()),
     );
     gh.lazySingleton<_i361.Dio>(
       () => dependencyInjection.dio(gh<_i973.TokenStorage>()),
