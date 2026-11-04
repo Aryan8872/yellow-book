@@ -191,7 +191,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     FocusScope.of(context).unfocus();
     if (_validateForm()) {
       final bloc = context.read<AuthBloc>();
-      if (_isLoginMode) {
+      if (true) {
         bloc.add(
           LoginRequested(
             email: _emailController.text.trim(),
@@ -228,6 +228,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         return;
       }
 
+      if (!mounted) return;
       final bloc = context.read<AuthBloc>();
       bloc.add(GoogleLoginRequested(idToken: idToken));
     } catch (e) {
@@ -474,7 +475,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                       ),
                                     ),
 
-                                    if (_isLoginMode)
+                                    if (true)
                                       Align(
                                         alignment: Alignment.centerRight,
                                         child: TextButton(
@@ -509,7 +510,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                     const SizedBox(height: 16),
 
                                     // Google Sign-In Button (Login Mode Only)
-                                    if (_isLoginMode)
+                                    if (true)
                                       Container(
                                         height: 50,
                                         decoration: BoxDecoration(
