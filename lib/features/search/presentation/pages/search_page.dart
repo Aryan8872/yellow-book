@@ -5,7 +5,6 @@ import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/core/services/user_location_service.dart';
 import 'package:entertainer/core/di/service_loader.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/features/home/data/datasources/category_remote_datasource.dart';
 import 'package:entertainer/features/home/presentation/widgets/location_selection_modal.dart';
 import 'package:entertainer/features/offer/data/datasource/places_remote_datasource.dart';
@@ -15,8 +14,13 @@ import 'package:entertainer/features/map/presentation/pages/map_discovery_page.d
 
 class SearchPage extends StatefulWidget {
   final String? initialLocation;
+  final String? initialQuery;
 
-  const SearchPage({super.key, this.initialLocation});
+  const SearchPage({
+    super.key,
+    this.initialLocation,
+    this.initialQuery,
+  });
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -70,6 +74,9 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+      _searchController.text = widget.initialQuery!;
+    }
     _activeLocationScope = widget.initialLocation ?? 'Kathmandu Valley';
     _restoreLocationPreference();
     _loadInitialData();

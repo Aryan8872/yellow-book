@@ -201,17 +201,38 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
   }
 
   Future<void> _confirmMapLocation(MapLoadedState state) async {
-    // _pickerTarget is reliably updated on every camera idle event (pan/zoom end)
-    // and on explicit map taps. Fall back to cameraPosition for edge cases where
-    // the user opens the picker but never pans (camera stays at initial position).
-    final coordinate =
-        _pickerTarget ?? _mapController?.cameraPosition?.target ?? state.browseLocation;
+    // _pickerTarget is reliably updated on onCameraMove, onCameraIdle, and onMapClick
+    LatLng? coordinate = _pickerTarget ?? _mapController?.cameraPosition?.target;
+
+    // If coordinate is still null, compute center of visible region as fallback
+    if (coordinate == null && _mapController != null) {
+      try {
+        final visibleRegion = await _mapController!.getVisibleRegion();
+        final sw = visibleRegion.southwest;
+        final ne = visibleRegion.northeast;
+        coordinate = LatLng(
+          (sw.latitude + ne.latitude) / 2,
+          (sw.longitude + ne.longitude) / 2,
+        );
+      } catch (_) {}
+    }
+
+    // Critically: do NOT fall back to state.browseLocation / state.userLocation
+    // as those could be the GPS Narayanhiti pin which is NOT what the user picked
+    // on the map picker. If after exhausting all map-derived sources we still have
+    // nothing, bail out and ask the user to move the map.
     if (coordinate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Choose a location on the map first.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please move the map to the desired location first.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
       return;
     }
+
     final reverse = await PlacesRemoteDataSource().reverse(
       lat: coordinate.latitude,
       lon: coordinate.longitude,
@@ -255,16 +276,16 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
         SymbolOptions(
           geometry: LatLng(cluster.latitude, cluster.longitude),
           iconImage: imageId,
-          iconSize: isCluster ? 0.55 : 0.45,
+          iconSize: isCluster ? 0.95 : 0.85,
           iconAnchor: isCluster ? 'center' : 'bottom',
           textField: isCluster
               ? '${cluster.offers.length}'
               : merchant['hotelName'] as String? ?? '',
-          textOffset: isCluster ? Offset.zero : const Offset(0, 1.5),
-          textSize: isCluster ? 13 : 11,
-          textColor: isCluster ? '#FFFFFF' : '#1A1A2E',
+          textOffset: isCluster ? Offset.zero : const Offset(0, 1.8),
+          textSize: isCluster ? 14 : 12,
+          textColor: isCluster ? '#FFFFFF' : '#0F172A',
           textHaloColor: '#FFFFFF',
-          textHaloWidth: isCluster ? 0 : 1.5,
+          textHaloWidth: 2.0,
         ),
         <String, dynamic>{
           'isCluster': isCluster,
@@ -301,14 +322,14 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
         SymbolOptions(
           geometry: browseLocation,
           iconImage: CategoryMapMarkerFactory.locationImageId,
-          iconSize: 0.5,
+          iconSize: 0.85,
           iconAnchor: 'bottom',
           textField: state.browseLocationLabel ?? 'Selected location',
-          textOffset: const Offset(0, 1.5),
-          textSize: 11,
-          textColor: '#1A1A2E',
+          textOffset: const Offset(0, 1.8),
+          textSize: 12,
+          textColor: '#0F172A',
           textHaloColor: '#FFFFFF',
-          textHaloWidth: 1.5,
+          textHaloWidth: 2.0,
         ),
         {'isBrowseLocation': true},
       );
@@ -729,6 +750,11 @@ class _MapDiscoveryViewState extends State<_MapDiscoveryView>
             final bloc = context.read<MapBloc>();
             final s = bloc.state;
             if (s is MapLoadedState) _onStyleLoaded(s);
+          },
+          onCameraMove: (position) {
+            if (widget.locationPicker) {
+              _pickerTarget = position.target;
+            }
           },
           onCameraIdle: _refreshOffersForVisibleRegion,
           onMapClick: (_, coordinates) {

@@ -14,6 +14,8 @@ import 'package:entertainer/features/offer/data/model/redemption_model.dart';
 import 'package:entertainer/features/profile/presentation/pages/redemption_history_page.dart';
 import 'package:entertainer/features/profile/presentation/pages/my_vouchers_page.dart';
 import 'package:entertainer/features/offer/presentation/pages/scratch_win_page.dart';
+import 'package:entertainer/features/offer/presentation/pages/favourites_page.dart';
+import 'package:entertainer/features/offer/presentation/pages/reward_history_page.dart';
 import 'package:entertainer/core/services/app_update_service.dart';
 import 'package:entertainer/core/services/update_available_dialog.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -219,7 +221,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                         const Icon(Icons.phone_iphone_rounded, size: 13, color: AppTheme.emeraldJade),
                                         const SizedBox(width: 3),
                                         Text(
-                                          '+977 9801234567',
+                                          user.phone.trim().isNotEmpty
+                                              ? (user.phone.trim().startsWith('+977')
+                                                  ? user.phone.trim()
+                                                  : '+977 ${user.phone.trim()}')
+                                              : 'No phone number set',
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 11.5,
                                             color: AppTheme.textMuted,
@@ -631,12 +637,42 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
 
-                // 4. Redemption & Voucher History Navigation Tiles
+                // 4. Redemption, Rewards & Saved History Navigation Tiles
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
                     child: Column(
                       children: [
+                        _buildNavTile(
+                          icon: Icons.bookmark_rounded,
+                          iconBg: AppTheme.crimsonLightBg,
+                          iconColor: AppTheme.crimsonPrimary,
+                          title: 'Saved & Wishlist Offers',
+                          subtitle: 'View your bookmarked deals and favorite spots',
+                          badgeText: 'Wishlist',
+                          badgeBg: AppTheme.crimsonLightBg,
+                          badgeColor: AppTheme.crimsonPrimary,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const FavouritesPage()),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildNavTile(
+                          icon: Icons.stars_rounded,
+                          iconBg: AppTheme.surfaceSubtle,
+                          iconColor: AppTheme.amberFlame,
+                          title: 'Scratch & Win Rewards History',
+                          subtitle: 'Track your won vouchers, wallet balance and prizes',
+                          badgeText: 'Rewards',
+                          badgeBg: AppTheme.surfaceSubtle,
+                          badgeColor: AppTheme.textPrimary,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const RewardHistoryPage()),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
                         _buildNavTile(
                           icon: Icons.receipt_long_rounded,
                           iconBg: AppTheme.crimsonLightBg,

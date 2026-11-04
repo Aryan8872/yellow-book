@@ -118,6 +118,7 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
   }
 
   void _onScroll() {
+    if (!_scrollController.hasClients) return;
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       final bloc = context.read<OffersBloc>();
@@ -130,9 +131,25 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
     }
   }
 
-  void _triggerSearch({OfferFilterCriteria? criteria, bool clearRadius = false}) {
+  String? _mapSortToBackendKey(String uiSort) {
+    switch (uiSort) {
+      case 'Discount: High to Low':
+        return 'discount_percent';
+      case 'Price: Low to High':
+        return 'price_asc';
+      case 'Rating: High to Low':
+        return 'rating';
+      case 'Recommended':
+      default:
+        return 'trending';
+    }
+  }
+
+  void _triggerSearch({OfferFilterCriteria? criteria, bool clearRadius = false, String? sort}) {
     final effective = criteria ?? _currentCriteria;
     final effectiveRadius = clearRadius ? null : effective.radiusKm;
+    final effectiveSort = sort ?? _selectedSort;
+
     context.read<OffersBloc>().add(
       FetchOffersRequested(
         q: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
@@ -140,16 +157,22 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
         lat: effectiveRadius != null ? widget.lat : null,
         lng: effectiveRadius != null ? widget.lng : null,
         radiusKm: effectiveRadius,
+        sortBy: _mapSortToBackendKey(effectiveSort),
+        minDiscount: effective.minDiscountPercent?.toDouble(),
+        minRating: effective.minRating,
         page: 1,
         limit: 20,
         refresh: true,
       ),
     );
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   Future<void> _openFilterDialog() async {
@@ -222,6 +245,7 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                 onTap: () {
                   setState(() => _selectedSort = opt);
                   Navigator.pop(ctx);
+                  _triggerSearch(sort: opt);
                 },
               );
             }),
@@ -466,29 +490,36 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                   return Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Text(
-                            '$count offers',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.textPrimary,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Text(
+                              '$count offers',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            widget.placeLabel != null
-                                ? 'in ${widget.placeLabel}'
-                                : 'in Kathmandu Valley',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: AppTheme.textMuted,
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                widget.placeLabel != null
+                                    ? 'in ${widget.placeLabel}'
+                                    : 'in Kathmandu Valley',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textMuted,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       // Sort dropdown trigger
                       GestureDetector(
                         onTap: _showSortDialog,
@@ -594,6 +625,8 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                       offers = List.of(offers)..sort((a, b) => (b.discountPercentage ?? 0).compareTo(a.discountPercentage ?? 0));
                     } else if (_selectedSort == 'Price: Low to High') {
                       offers = List.of(offers)..sort((a, b) => a.computedDiscountedPriceNpr.compareTo(b.computedDiscountedPriceNpr));
+                    } else if (_selectedSort == 'Rating: High to Low') {
+                      offers = List.of(offers)..sort((a, b) => b.rating.compareTo(a.rating));
                     } else if (_selectedSort == 'Distance: Near to Far') {
                       final userLat = widget.lat;
                       final userLng = widget.lng;
@@ -664,10 +697,11 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                             ElevatedButton(
                               onPressed: () {
                                 setState(() {
+                                  // Clear all facet filters and reset sorting, but PRESERVE the search keyword!
                                   _currentCriteria = const OfferFilterCriteria();
-                                  _searchController.clear();
+                                  _selectedSort = 'Recommended';
                                 });
-                                _triggerSearch(criteria: const OfferFilterCriteria(), clearRadius: true);
+                                _triggerSearch(criteria: const OfferFilterCriteria(), clearRadius: true, sort: 'Recommended');
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.crimsonPrimary,

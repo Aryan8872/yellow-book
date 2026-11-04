@@ -10,7 +10,7 @@ class BaseUrls {
   static const String localHost = 'http://localhost:3000/api/v1';
 
   // Production backend hosted on Railway
-  static const String production = 'https://yellow-bookapi-production.up.railway.app/api/v1';
+  static const String production = 'https://yellow-bookapi-production-551c.up.railway.app/api/v1';
 
   // Dynamic selector based on runtime target and debug status
   static String get current {

@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
-import 'package:entertainer/core/di/service_loader.dart';
 import 'package:entertainer/core/widgets/offline_banner.dart';
 import 'package:entertainer/features/auth/domain/entities/user.dart';
 import 'package:entertainer/features/home/presentation/pages/home_page.dart';
 import 'package:entertainer/features/search/presentation/pages/search_page.dart';
 import 'package:entertainer/features/profile/presentation/pages/profile_page.dart';
-import 'package:entertainer/features/offer/presentation/pages/favourites_page.dart';
-import 'package:entertainer/features/offer/presentation/bloc/favourites_bloc.dart';
+import 'package:entertainer/features/offer/presentation/pages/scratch_win_page.dart';
 import 'package:entertainer/core/services/app_update_service.dart';
 import 'package:entertainer/core/services/update_available_dialog.dart';
 
@@ -50,7 +46,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       HomePage(user: widget.user),
       const SearchPage(),
       const SizedBox(), // placeholder for center FAB tab
-      const FavouritesPage(),
+      const ScratchWinPage(),
       const ProfilePage(),
     ];
 
@@ -245,11 +241,11 @@ class _NotchedNavBar extends StatelessWidget {
                 ),
                 // Center notch spacer
                 const Expanded(child: SizedBox()),
-                // Tab 3: Saved
+                // Tab 3: Scratch & Win
                 _NavTab(
-                  icon: Icons.bookmark_border_rounded,
-                  activeIcon: Icons.bookmark_rounded,
-                  label: 'Saved',
+                  icon: Icons.celebration_outlined,
+                  activeIcon: Icons.celebration_rounded,
+                  label: 'Scratch',
                   isActive: currentIndex == 3,
                   onTap: () => onTap(3),
                 ),

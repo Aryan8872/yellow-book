@@ -18,6 +18,7 @@ import 'package:entertainer/features/home/presentation/widgets/location_selectio
 import 'package:entertainer/features/search/presentation/pages/search_results_page.dart';
 import 'package:entertainer/features/offer/domain/entity/offer_entity.dart';
 import 'package:entertainer/features/offer/data/datasource/places_remote_datasource.dart';
+import 'package:entertainer/core/models/location_context.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_state.dart';
 import 'package:entertainer/features/auth/presentation/pages/login_page.dart';
@@ -31,6 +32,8 @@ import 'package:entertainer/features/home/data/datasources/category_remote_datas
 import 'package:entertainer/features/offer/data/datasource/branch_remote_datasource.dart';
 import 'package:entertainer/features/offer/domain/entity/redemption_entity.dart';
 import 'package:entertainer/features/offer/presentation/pages/merchant_detail_page.dart';
+import 'package:entertainer/features/home/presentation/widgets/featured_carousel_swiper.dart';
+import 'package:entertainer/features/home/presentation/widgets/live_deals_ticker.dart';
 
 class HomePage extends StatelessWidget {
   final User user;
@@ -47,7 +50,7 @@ class HomePage extends StatelessWidget {
         BlocProvider(
           create: (_) => getIt<OffersBloc>()
             ..add(
-              const FetchOffersRequested(page: 1, limit: 30, radiusKm: 50, refresh: true),
+              const FetchOffersRequested(page: 1, limit: 30, radiusKm: 25.0, refresh: true),
             ),
         ),
       ],
@@ -107,6 +110,8 @@ class _HomeViewState extends State<_HomeView> {
 
   String _currentLocation = 'Kathmandu Valley';
   PlaceSuggestion? _selectedPlace;
+  LocationContext _currentLocationContext = LocationContext.defaultKathmandu;
+  int _activeLocationRequestId = 0;
   int _unreadCount = 0;
   String _activeQuickChip = 'Near me';
 
@@ -165,22 +170,29 @@ class _HomeViewState extends State<_HomeView> {
   }
 
   Future<void> _fetchNearbyBranches({required double lat, required double lng}) async {
-    setState(() => _isLoadingBranches = true);
+    // Monotonic request sequencing: if a newer location request arrives before
+    // this one completes, the stale response must not overwrite the fresh state.
+    _activeLocationRequestId++;
+    final requestId = _activeLocationRequestId;
+
+    if (mounted) setState(() => _isLoadingBranches = true);
     try {
       final branches = await getIt<BranchRemoteDataSource>().getBranchesNear(
         lat: lat,
         lng: lng,
-        radiusKm: 50.0,
+        radiusKm: 25.0,
         limit: 15,
       );
-      if (mounted) {
+      // Discard response if a newer request has already been dispatched.
+      if (mounted && requestId == _activeLocationRequestId) {
         setState(() {
           _nearbyBranches = branches;
           _isLoadingBranches = false;
         });
       }
     } catch (_) {
-      if (mounted) {
+      // Only clear loading state when this request is still the active one.
+      if (mounted && requestId == _activeLocationRequestId) {
         setState(() => _isLoadingBranches = false);
       }
     }
@@ -199,8 +211,10 @@ class _HomeViewState extends State<_HomeView> {
       currentLocation: _currentLocation,
     );
     if (selected != null && mounted) {
+      final locContext = LocationContext.fromPlaceSuggestion(selected, radiusKm: 25.0);
       setState(() {
         _selectedPlace = selected;
+        _currentLocationContext = locContext;
         _currentLocation = selected.formatted;
         _activeQuickChip = selected.district ?? selected.formatted;
       });
@@ -210,8 +224,8 @@ class _HomeViewState extends State<_HomeView> {
         FetchOffersRequested(
           lat: selected.lat,
           lng: selected.lon,
-          radiusKm: 50,
-          location: selected.district,
+          radiusKm: 25.0,
+          location: selected.district ?? selected.name,
           page: 1,
           limit: 30,
           refresh: true,
@@ -249,7 +263,7 @@ class _HomeViewState extends State<_HomeView> {
       FetchOffersRequested(
         lat: chip.lat,
         lng: chip.lon,
-        radiusKm: 50,
+        radiusKm: 25.0,
         page: 1,
         limit: 30,
         refresh: true,
@@ -293,7 +307,7 @@ class _HomeViewState extends State<_HomeView> {
               FetchOffersRequested(
                 lat: _selectedPlace?.lat,
                 lng: _selectedPlace?.lon,
-                radiusKm: 50,
+                radiusKm: 25.0,
                 location: _selectedPlace?.district,
                 page: 1,
                 limit: 30,
@@ -617,6 +631,35 @@ class _HomeViewState extends State<_HomeView> {
                       ),
                     ],
                   ),
+                ),
+              ),
+
+              // ── 2B. Live Deal & Perks Marquee Ticker ────────────────────────
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 8, bottom: 12),
+                  child: LiveDealsTicker(),
+                ),
+              ),
+
+              // ── 2C. Featured Hero Swiper Carousel ───────────────────────────
+              SliverToBoxAdapter(
+                child: BlocBuilder<OffersBloc, OffersState>(
+                  builder: (context, state) {
+                    if (state is OffersLoaded) {
+                      final featured = state.offers.where((o) => o.isFeatured).toList();
+                      final displayList = featured.isNotEmpty
+                          ? featured.take(5).toList()
+                          : state.offers.take(4).toList();
+                      if (displayList.isNotEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: FeaturedCarouselSwiper(offers: displayList),
+                        );
+                      }
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
               ),
 

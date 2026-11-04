@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 
+/// Clean flat segmented switcher for Sign In vs Create Account.
+/// No neon gradients, no gaudy shadows, crisp 10px borders.
 class AuthSegmentedControl extends StatelessWidget {
   final bool isLoginMode;
   final ValueChanged<bool> onModeChanged;
@@ -14,90 +17,76 @@ class AuthSegmentedControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 52,
-      padding: const EdgeInsets.all(4),
+      height: 44,
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: AppTheme.surfaceSubtle,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: AppTheme.borderLight,
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.borderLight),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final tabWidth = (constraints.maxWidth - 4) / 2;
-
-          return Stack(
-            children: [
-              // Sliding Active Tab Pill
-              AnimatedAlign(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOutCubic,
-                alignment: isLoginMode
-                    ? Alignment.centerLeft
-                    : Alignment.centerRight,
-                child: Container(
-                  width: tabWidth,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppTheme.darkPill,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.darkPill.withValues(alpha: 0.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onModeChanged(true),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isLoginMode ? AppTheme.cardSurface : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: isLoginMode
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Sign In',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: isLoginMode ? FontWeight.w800 : FontWeight.w600,
+                    color: isLoginMode ? AppTheme.textPrimary : AppTheme.textSecondary,
                   ),
                 ),
               ),
-
-              // Tab Titles
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => onModeChanged(true),
-                      child: Center(
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: TextStyle(
-                            color: isLoginMode ? Colors.white : AppTheme.textSecondary,
-                            fontWeight: isLoginMode ? FontWeight.w700 : FontWeight.w600,
-                            fontSize: 14,
-                            letterSpacing: -0.2,
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onModeChanged(false),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: !isLoginMode ? AppTheme.cardSurface : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: !isLoginMode
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
                           ),
-                          child: const Text('Sign In'),
-                        ),
-                      ),
-                    ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Create Account',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: !isLoginMode ? FontWeight.w800 : FontWeight.w600,
+                    color: !isLoginMode ? AppTheme.textPrimary : AppTheme.textSecondary,
                   ),
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => onModeChanged(false),
-                      child: Center(
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: TextStyle(
-                            color: !isLoginMode ? Colors.white : AppTheme.textSecondary,
-                            fontWeight: !isLoginMode ? FontWeight.w700 : FontWeight.w600,
-                            fontSize: 14,
-                            letterSpacing: -0.2,
-                          ),
-                          child: const Text('Register'),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ],
-          );
-        },
+            ),
+          ),
+        ],
       ),
     );
   }

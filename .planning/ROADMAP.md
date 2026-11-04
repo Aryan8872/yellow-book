@@ -285,7 +285,64 @@
 - [ ] Phase 5: Enhanced Features
 - [ ] Phase 6: Security Hardening
 - [ ] Phase 7: Performance Optimization
-- [ ] Phase 8: Polish & Launch
+
+---
+
+## Phase 9: UI Consistency & OAuth Integration (Priority: High)
+
+**Goal:** Ensure UI consistency across the app, implement OAuth authentication, and enhance map markers
+
+### Plans
+
+1. **Design System Analysis & Location Page UI Update**
+   - Analyze existing design patterns, color themes, spacing, fonts, and UI traits across the app
+   - Document design system components (typography, colors, spacing, components)
+   - Update choose location page UI to match app theme and design patterns
+   - Ensure consistent visual language with other screens
+
+2. **OAuth Implementation (Mobile App & Backend)**
+   - Analyze current OAuth flow in mobile app and backend
+   - Identify gaps, security issues, or potential bugs in OAuth flow
+   - Implement Google OAuth provider on backend (if missing)
+   - Implement OAuth callback handling on mobile app
+   - Add proper token exchange and refresh logic
+   - Test OAuth registration and login flows end-to-end
+   - Add error handling for OAuth failures
+
+3. **User Profile Page UI Enhancement**
+   - Analyze current user profile page UI
+   - Update UI to match app design system
+   - Improve visual hierarchy and information architecture
+   - Ensure consistency with other profile-related screens
+
+4. **Avatar Image Upload (Camera & Gallery)**
+   - Implement camera capture for avatar
+   - Implement gallery selection for avatar
+   - Ensure backend supports multipart/form-data for image upload (not just URL)
+   - Update mobile app to send image data properly during POST/PATCH requests
+   - Add image compression/optimization before upload
+   - Add proper error handling for upload failures
+   - Test upload flow end-to-end
+
+5. **Branch Markers on Map Enhancement**
+   - Analyze current branch marker implementation
+   - Increase marker size by 1.5x for better visibility
+   - Ensure branch names display properly on markers
+   - Implement color differentiation based on merchant category
+   - Test markers at different zoom levels
+   - Ensure markers do not overlap or clutter the map
+
+**Success Criteria:**
+- Location page UI matches app design system
+- OAuth login/registration works correctly on mobile app
+- OAuth tokens are securely stored and refreshed
+- User profile page has updated, consistent UI
+- Users can upload avatar photos via camera or gallery
+- Backend properly handles image uploads (multipart/form-data)
+- Branch markers are 1.5x larger, display names, and show category-based colors
+- Markers remain visible even when map is zoomed out
+
+- [x] Phase 8: Polish [ ] Phase 8: Polish & Launch Launch
 
 ---
 *Last updated: 2026-10-07*

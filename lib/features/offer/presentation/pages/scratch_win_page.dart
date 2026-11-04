@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
+import 'package:entertainer/features/offer/presentation/widgets/scratch_card_widget.dart';
+import 'package:entertainer/features/offer/presentation/pages/reward_history_page.dart';
 
 class ScratchWinPage extends StatefulWidget {
   const ScratchWinPage({super.key});
@@ -80,13 +82,24 @@ class _ScratchWinPageState extends State<ScratchWinPage> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history_rounded, color: AppTheme.textPrimary),
+            tooltip: 'Reward History',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RewardHistoryPage()),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.amberFlame.withValues(alpha: 0.15),
+                color: AppTheme.surfaceSubtle,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.borderLight),
               ),
               child: Row(
                 children: [
@@ -97,7 +110,7 @@ class _ScratchWinPageState extends State<ScratchWinPage> {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.amberFlame,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                 ],
@@ -227,242 +240,210 @@ class _ScratchWinPageState extends State<ScratchWinPage> {
 
             const SizedBox(height: 24),
 
-            // 2. Interactive Scratch Card Component
-            GestureDetector(
-              onTap: _scratchCard,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFFD94A), Color(0xFFE11D48), Color(0xFFF59E0B)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+            // 2. Interactive Finger-Gesture Scratch Physics Card
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.cardSurface,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: AppTheme.borderLight),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
                   ),
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.crimsonPrimary.withValues(alpha: 0.25),
-                      blurRadius: 20,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(3),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardSurface,
-                    borderRadius: BorderRadius.circular(19),
-                  ),
-                  padding: const EdgeInsets.all(20),
-                  child: Stack(
-                    children: [
-                      // Winning Details (Under the foil)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: AppTheme.emeraldLightBg,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.redeem_rounded, size: 32, color: AppTheme.emeraldJade),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.emeraldLightBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              'CONGRATULATIONS!',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.emeraldJade,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Rs. 250 Credit!',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.crimsonPrimary,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'OfferNepal Dining Voucher Valid Valley-wide',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12.5,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Partner Bonus Box
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.local_cafe_rounded, size: 22, color: AppTheme.amberFlame),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '+20% Extra Off at Himalayan Java',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppTheme.textPrimary,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Partner bonus applied automatically',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11,
-                                          color: AppTheme.textMuted,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Coupon Box
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceContainer,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _couponCode,
-                                  style: GoogleFonts.jetBrainsMono(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: _copyCoupon,
-                                  child: Text(
-                                    _codeCopied ? 'COPIED!' : 'COPY',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppTheme.crimsonPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Claim Button
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _isClaimed ? AppTheme.emeraldJade : AppTheme.crimsonPrimary,
-                              minimumSize: const Size(double.infinity, 50),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              elevation: 0,
-                            ),
-                            onPressed: _isClaimed ? null : _claimReward,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(_isClaimed ? Icons.check_circle_rounded : Icons.account_balance_wallet_rounded, size: 18, color: Colors.white),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _isClaimed ? 'Claimed to Wallet' : 'Claim to Wallet & Redeem',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Scratch Foil Overlay
-                      if (!_isScratched)
-                        Positioned.fill(
-                          child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 500),
-                            opacity: _isScratched ? 0.0 : 1.0,
-                            child: Container(
+                ],
+              ),
+              child: SizedBox(
+                height: 380,
+                child: ScratchCardWidget(
+                  thresholdPercent: 0.40,
+                  onThresholdReached: () {
+                    setState(() {
+                      _isScratched = true;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 56,
+                              height: 56,
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFFB0B3C1), Color(0xFFD6DAE8), Color(0xFF9EA3B5)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(18),
+                                color: AppTheme.emeraldJade.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
                               ),
-                              child: Center(
+                              child: const Icon(
+                                Icons.redeem_rounded,
+                                size: 28,
+                                color: AppTheme.emeraldJade,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceDark,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'CONGRATULATIONS!',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Rs. 250 Credit!',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.crimsonPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'OfferNepal Dining Voucher Valid Valley-wide',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+
+                        // Partner Bonus Box
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceSubtle,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.borderLight),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.local_cafe_rounded,
+                                size: 20,
+                                color: AppTheme.amberFlame,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
                                 child: Column(
-                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.3),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.touch_app_rounded, size: 36, color: Colors.white),
-                                    ),
-                                    const SizedBox(height: 12),
                                     Text(
-                                      'TAP TO SCRATCH FOIL',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white,
-                                        letterSpacing: 1.2,
-                                        shadows: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.3),
-                                            blurRadius: 6,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Rub to reveal your daily perk',
+                                      '+20% Extra Off at Himalayan Java',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 12,
-                                        color: Colors.white.withValues(alpha: 0.9),
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Partner bonus applied automatically',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: AppTheme.textMuted,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
-                    ],
+
+                        // Coupon Box
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceSubtle,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.borderLight),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _couponCode,
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: _copyCoupon,
+                                child: Text(
+                                  _codeCopied ? 'COPIED!' : 'COPY',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.crimsonPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Claim Button
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isClaimed
+                                ? AppTheme.emeraldJade
+                                : AppTheme.crimsonPrimary,
+                            minimumSize: const Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: _isClaimed ? null : _claimReward,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _isClaimed
+                                    ? Icons.check_circle_rounded
+                                    : Icons.account_balance_wallet_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isClaimed
+                                    ? 'Claimed to Wallet'
+                                    : 'Claim to Wallet & Redeem',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
