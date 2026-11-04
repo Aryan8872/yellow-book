@@ -18,6 +18,8 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
   double? _currentLat;
   double? _currentLng;
   double? _currentRadiusKm;
+  double? _currentMinDiscount;
+  double? _currentMinRating;
   int _currentPage = 1;
   final int _limit = 20;
 
@@ -39,7 +41,8 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
     _currentLocation = event.location ?? _currentLocation;
     _currentSortBy = event.sortBy ?? _currentSortBy;
     _currentLat = event.lat;
-    _currentLng = event.lng;
+    _currentMinDiscount = event.minDiscount;
+    _currentMinRating = event.minRating;
     _currentRadiusKm = event.radiusKm ?? (event.lat != null ? 50.0 : null);
     _currentPage = event.page;
 
@@ -56,6 +59,8 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
         lat: _currentLat,
         lng: _currentLng,
         radiusKm: _currentRadiusKm,
+        minDiscount: _currentMinDiscount,
+        minRating: _currentMinRating,
         location: _currentLocation,
         sortBy: _currentSortBy,
         merchantId: event.merchantId,
@@ -103,6 +108,8 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
           lat: _currentLat,
           lng: _currentLng,
           radiusKm: _currentRadiusKm,
+minDiscount: _currentMinDiscount,
+minRating: _currentMinRating,
           location: _currentLocation,
           sortBy: _currentSortBy,
         ),
@@ -143,6 +150,8 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
         lat: _currentLat,
         lng: _currentLng,
         radiusKm: _currentRadiusKm,
+        minDiscount: _currentMinDiscount,
+        minRating: _currentMinRating,
         location: _currentLocation,
         page: 1,
         refresh: true,
@@ -161,6 +170,8 @@ class OffersBloc extends Bloc<OffersEvent, OffersState> {
         lat: _currentLat,
         lng: _currentLng,
         radiusKm: _currentRadiusKm,
+        minDiscount: _currentMinDiscount,
+        minRating: _currentMinRating,
         location: _currentLocation,
         page: 1,
         refresh: true,

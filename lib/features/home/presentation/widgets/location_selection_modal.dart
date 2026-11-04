@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:entertainer/core/di/service_loader.dart';
+import 'package:entertainer/core/services/user_location_service.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/features/map/presentation/pages/map_discovery_page.dart';
 import 'package:entertainer/features/offer/data/datasource/places_remote_datasource.dart';
@@ -151,6 +153,12 @@ class _LocationSelectionModalState extends State<LocationSelectionModal> {
   }
 
   void _selectPlace(PlaceSuggestion place) {
+    // Persist to secure storage so the chosen location survives app restarts
+    // and is not overwritten by the GPS Narayanhiti fallback.
+    getIt<UserLocationService>().saveLocation(place);
+    // Persist to secure storage so the chosen location survives app restarts
+    // and is not overwritten by the GPS Narayanhiti fallback.
+    getIt<UserLocationService>().saveLocation(place);
     widget.onLocationSelected(place);
   }
 
@@ -174,9 +182,10 @@ class _LocationSelectionModalState extends State<LocationSelectionModal> {
         title: Text(
           'Choose location',
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 19,
-            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
             color: AppTheme.textPrimary,
+            letterSpacing: -0.3,
           ),
         ),
         centerTitle: true,
@@ -191,8 +200,13 @@ class _LocationSelectionModalState extends State<LocationSelectionModal> {
                 controller: _searchController,
                 autofocus: true,
                 onChanged: _onSearchChanged,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textPrimary,
+                ),
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search_rounded),
+                  prefixIcon: Icon(Icons.search_rounded, color: AppTheme.textSecondary),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
                       : IconButton(
@@ -200,152 +214,22 @@ class _LocationSelectionModalState extends State<LocationSelectionModal> {
                             _searchController.clear();
                             _onSearchChanged('');
                           },
-                          icon: const Icon(Icons.close_rounded),
+                          icon: Icon(Icons.close_rounded, color: AppTheme.textSecondary),
                         ),
                   hintText: 'Search any place in Nepal',
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: AppTheme.textMuted,
+                  ),
                   filled: true,
                   fillColor: AppTheme.cardSurface,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 16,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide(color: AppTheme.borderLight),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide(color: AppTheme.borderLight),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  _ActionTile(
-                    icon: Icons.my_location_rounded,
-                    title: 'Set current location',
-                    subtitle: 'Use a fresh GPS location',
-                    isLoading: _isGettingLocation,
-                    onTap: _isGettingLocation ? null : _setCurrentLocation,
-                  ),
-                  const SizedBox(height: 10),
-                  _ActionTile(
-                    icon: Icons.map_outlined,
-                    title: 'Set on map',
-                    subtitle: 'Search a place or move the map pin',
-                    onTap: _setLocationOnMap,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Text(
-                _searchController.text.trim().length < 2
-                    ? 'Current selection: ${widget.currentLocation}'
-                    : 'Search results',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: _isSearching
-                  ? const Center(child: CircularProgressIndicator())
-                  : _places.isEmpty
-                  ? Center(
-                      child: Text(
-                        _searchController.text.trim().length < 2
-                            ? 'Search for a town, neighborhood, or landmark.'
-                            : 'No matching places found.',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 8,
-                      ),
-                      itemCount: _places.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final place = _places[index];
-                        return _PlaceTile(
-                          place: place,
-                          onTap: () => _selectPlace(place),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
-  final bool isLoading;
-
-  const _ActionTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.onTap,
-    this.isLoading = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      tileColor: AppTheme.cardSurface,
-      leading: Icon(icon, color: AppTheme.accentPeriwinkleDark),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(subtitle),
-      trailing: isLoading
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.chevron_right_rounded),
-      onTap: onTap,
-    );
-  }
-}
-
-class _PlaceTile extends StatelessWidget {
-  final PlaceSuggestion place;
-  final VoidCallback onTap;
-
-  const _PlaceTile({required this.place, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      tileColor: AppTheme.cardSurface,
-      leading: const Icon(
-        Icons.location_on_outlined,
-        color: AppTheme.accentPeriwinkleDark,
-      ),
-      title: Text(
-        place.name,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-      subtitle: Text(place.formatted),
-      trailing: const Icon(Icons.chevron_right_rounded),
-      onTap: onTap,
-    );
-  }
-}
+   

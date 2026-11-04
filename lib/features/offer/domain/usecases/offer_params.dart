@@ -17,6 +17,8 @@ class GetPaginatedOffersParams {
   final bool? isFeatured;
   final String? sortBy; // 'trending', 'popular', 'rating', 'savings', 'newest'
   final String? location; // location/city filter for the backend
+  final double? minDiscount;
+  final double? minRating;
   final Map<String, dynamic>? additionalQuery;
 
   const GetPaginatedOffersParams({
@@ -29,6 +31,8 @@ class GetPaginatedOffersParams {
     this.radiusKm,
     this.merchantId,
     this.isFeatured,
+    this.minDiscount,
+    this.minRating,
     this.sortBy,
     this.location,
     this.additionalQuery,
@@ -44,6 +48,8 @@ class GetPaginatedOffersParams {
     if (lat != null) query['lat'] = lat;
     if (lng != null) query['lng'] = lng;
     if (radiusKm != null) query['radiusKm'] = radiusKm;
+    if (minDiscount != null) query['minDiscount'] = minDiscount;
+    if (minRating != null) query['minRating'] = minRating;
     if (merchantId != null && merchantId!.isNotEmpty) query['merchantId'] = merchantId;
     if (isFeatured != null) query['isFeatured'] = isFeatured;
     if (sortBy != null && sortBy!.trim().isNotEmpty) query['sortBy'] = sortBy!.trim();

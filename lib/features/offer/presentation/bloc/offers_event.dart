@@ -11,6 +11,8 @@ final class FetchOffersRequested extends OffersEvent {
   final String? location;
   final String? sortBy;
   final String? merchantId;
+  final double? minDiscount;
+  final double? minRating;
   final int page;
   final int limit;
   final bool refresh;
@@ -24,6 +26,8 @@ final class FetchOffersRequested extends OffersEvent {
     this.location,
     this.sortBy,
     this.merchantId,
+    this.minDiscount,
+    this.minRating,
     this.page = 1,
     this.limit = 20,
     this.refresh = false,
