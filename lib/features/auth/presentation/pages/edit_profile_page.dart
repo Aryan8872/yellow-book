@@ -10,7 +10,6 @@ import 'package:entertainer/core/di/service_loader.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:entertainer/core/network/upload_remote_datasource.dart';
 import 'package:entertainer/core/services/image_compressor.dart';
-import 'package:entertainer/core/services/retry_helper.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_event.dart';
@@ -26,7 +25,6 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final ImageCompressor _compressor = ImageCompressor();
-  final RetryHelper _retryHelper = RetryHelper();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
@@ -55,29 +53,68 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _phoneController.dispose();
     super.dispose();
   }
-
   Future<void> _pickImage() async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppTheme.cardSurface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Choose Photo", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded, color: AppTheme.accentPeriwinkle),
+              title: Text("Camera", style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+              onTap: () { Navigator.pop(context); _pickFromCamera(); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded, color: AppTheme.accentPeriwinkle),
+              title: Text("Gallery", style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+              onTap: () { Navigator.pop(context); _pickFromGallery(); },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickFromCamera() async {
+    final status = await Permission.camera.request();
+    if (!status.isGranted) { _pickFromGallery(); return; }
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        setState(() {
-          _avatarImagePath = image.path;
-          _saveError = null;
-        });
-      }
+      final XFile? image = await _picker.pickImage(source: ImageSource.camera, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+      if (image != null) await _processImage(image);
+    } catch (e) { _pickFromGallery(); }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+      if (image != null) await _processImage(image);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to pick image: $e'),
-          backgroundColor: AppTheme.errorRed,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to pick image: $e"), backgroundColor: AppTheme.errorRed));
+    }
+  }
+
+  Future<void> _processImage(XFile image) async {
+    setState(() => _saveError = null);
+    try {
+      final bytes = await image.readAsBytes();
+      final compressedBytes = await _compressor.compressImage(bytes);
+      final tempDir = Directory.systemTemp;
+      final tempFile = File("${tempDir.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg");
+      await tempFile.writeAsBytes(compressedBytes);
+      setState(() => _avatarImagePath = tempFile.path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to process image: $e"), backgroundColor: AppTheme.errorRed));
     }
   }
 
