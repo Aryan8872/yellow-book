@@ -12,13 +12,16 @@ class CategoryMapMarkerFactory {
     'ENTERTAINMENT',
     'RETAIL',
     'TRAVEL',
-    'BEAUTY',
+    'HOTEL',
+    'ROOMS_FLATS',
   ];
 
   static String imageIdFor(String? categorySlug) {
     final slug = categorySlug?.toUpperCase();
-    return categorySlugs.contains(slug)
-        ? 'offer-pin-${slug!.toLowerCase()}'
+    // Beauty was merged into Wellness; keep legacy pins rendering correctly.
+    final normalized = slug == 'BEAUTY' ? 'WELLNESS' : slug;
+    return categorySlugs.contains(normalized)
+        ? 'offer-pin-${normalized!.toLowerCase()}'
         : 'offer-pin-default';
   }
 
@@ -185,14 +188,33 @@ class CategoryMapMarkerFactory {
           ..cubicTo(36, 84, 66, 52, 66, 33)
           ..cubicTo(66, 17, 54, 4, 36, 4)
           ..close();
-      case 'BEAUTY':
+      case 'HOTEL':
         return Path()
-          ..moveTo(36, 80)
-          ..cubicTo(30, 73, 6, 52, 6, 29)
-          ..cubicTo(6, 8, 31, 2, 36, 23)
-          ..cubicTo(41, 2, 66, 8, 66, 29)
-          ..cubicTo(66, 52, 42, 73, 36, 80)
+          ..moveTo(36, 4)
+          ..lineTo(64, 20)
+          ..lineTo(64, 52)
+          ..lineTo(36, 68)
+          ..lineTo(8, 52)
+          ..lineTo(8, 20)
+          ..close()
+          ..moveTo(27, 54)
+          ..lineTo(36, 84)
+          ..lineTo(45, 54)
           ..close();
+      case 'ROOMS_FLATS':
+        return Path()
+          ..moveTo(36, 4)
+          ..lineTo(66, 36)
+          ..lineTo(36, 68)
+          ..lineTo(6, 36)
+          ..close()
+          ..moveTo(26, 54)
+          ..lineTo(36, 84)
+          ..lineTo(46, 54)
+          ..close();
+      case 'BEAUTY':
+        // Legacy alias: Beauty now renders as Wellness.
+        return _pathFor('WELLNESS');
       default:
         return Path()
           ..addOval(const Rect.fromLTWH(10, 5, 52, 52))
@@ -242,8 +264,13 @@ class CategoryMapMarkerFactory {
         return const Color(0xFFFFD94A);
       case 'TRAVEL':
         return const Color(0xFF9F8EFC);
+      case 'HOTEL':
+        return const Color(0xFF3B82F6);
+      case 'ROOMS_FLATS':
+        return const Color(0xFF8B5CF6);
       case 'BEAUTY':
-        return const Color(0xFFFF5C67);
+        // Legacy alias: Beauty now renders as Wellness.
+        return _colorFor('WELLNESS');
       default:
         return const Color(0xFF1A1A2E);
     }

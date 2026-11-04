@@ -292,8 +292,12 @@ class _CategoryFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = {
       'Dining': const Color(0xFFEF4444),
-      'Hotels': AppTheme.accentPeriwinkleDark,
-      'Activities': AppTheme.savingsGreen,
+      'Wellness': AppTheme.savingsGreen,
+      'Hotel': const Color(0xFF3B82F6),
+      'Rooms & Flats': const Color(0xFF8B5CF6),
+      'Travel': AppTheme.accentPeriwinkleDark,
+      'Entertainment': const Color(0xFF9F8EFC),
+      'Retail': const Color(0xFFF59E0B),
     };
     return Container(
       color: colors[category] ?? AppTheme.darkPill,

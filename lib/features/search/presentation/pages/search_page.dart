@@ -726,6 +726,8 @@ class _SearchPageState extends State<SearchPage> {
     if (lower.contains('activ') || lower.contains('sport')) defaultIcon = Icons.sports_esports_rounded;
     if (lower.contains('shop') || lower.contains('retail')) defaultIcon = Icons.shopping_bag_rounded;
     if (lower.contains('get') || lower.contains('travel')) defaultIcon = Icons.landscape_rounded;
+    if (lower.contains('hotel') || lower.contains('stay')) defaultIcon = Icons.hotel_rounded;
+    if (lower.contains('room') || lower.contains('flat') || lower.contains('apartment')) defaultIcon = Icons.apartment_rounded;
     if (lower.contains('salon') || lower.contains('beauty')) defaultIcon = Icons.content_cut_rounded;
 
     return GestureDetector(

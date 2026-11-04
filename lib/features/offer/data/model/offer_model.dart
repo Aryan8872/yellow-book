@@ -305,7 +305,7 @@ class OfferModel {
       title: entity.title,
       description: entity.description,
       terms: entity.terms,
-      categoryName: entity.category.name,
+      categoryName: entity.category.toJson(),
       merchantId: entity.merchantId,
       merchantName: entity.merchantName,
       estimatedSavingsNpr: entity.estimatedSavingsNpr,

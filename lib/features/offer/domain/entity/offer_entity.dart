@@ -4,18 +4,57 @@ enum OfferCategory {
   entertainment,
   retail,
   travel,
-  beauty;
+  hotel,
+  roomsFlats;
 
+  /// Parses API category names *and* slugs. Backend category names are
+  /// human-readable ("Rooms & Flats") while offer payloads can carry either
+  /// the display name or the enum slug, so normalise both to letters/digits.
   factory OfferCategory.fromString(String? value) {
     if (value == null || value.trim().isEmpty) return OfferCategory.dining;
-    final normalized = value.trim().toUpperCase();
+    final normalized = value.trim().toUpperCase().replaceAll(
+      RegExp(r'[^A-Z0-9]'),
+      '',
+    );
+
+    switch (normalized) {
+      case 'HOTEL':
+      case 'HOTELS':
+      case 'STAY':
+      case 'STAYS':
+        return OfferCategory.hotel;
+      case 'ROOMSFLATS':
+      case 'ROOMFLAT':
+      case 'ROOMS':
+      case 'FLATS':
+        return OfferCategory.roomsFlats;
+      // Beauty was merged into Wellness; keep old payloads working.
+      case 'BEAUTY':
+      case 'SALON':
+        return OfferCategory.wellness;
+    }
+
     return OfferCategory.values.firstWhere(
-      (e) => e.name.toUpperCase() == normalized,
+      (category) => category.name.toUpperCase() == normalized,
       orElse: () => OfferCategory.dining,
     );
   }
 
-  String toJson() => name.toUpperCase();
+  String toJson() => switch (this) {
+    OfferCategory.roomsFlats => 'ROOMS_FLATS',
+    _ => name.toUpperCase(),
+  };
+
+  /// Human-readable label used in filters, chips and detail pages.
+  String get displayName => switch (this) {
+    OfferCategory.dining => 'Dining',
+    OfferCategory.wellness => 'Wellness',
+    OfferCategory.entertainment => 'Entertainment',
+    OfferCategory.retail => 'Retail',
+    OfferCategory.travel => 'Travel',
+    OfferCategory.hotel => 'Hotel',
+    OfferCategory.roomsFlats => 'Rooms & Flats',
+  };
 }
 
 class MerchantBranchEntity {
@@ -154,7 +193,7 @@ class OfferEntity {
       'title': title,
       'description': description,
       'terms': terms,
-      'category': category.name,
+      'category': category.toJson(),
       'location': branch?.address ?? branch?.city ?? 'Kathmandu, Nepal',
       'distanceFromUser': '1.2 km away',
       'highlightTag': discountPercentage != null && discountPercentage! > 0

@@ -172,6 +172,8 @@ class _CategoryCardState extends State<CategoryCard> {
       return Icons.spa_rounded;
     } else if (lower.contains('hotel') || lower.contains('stay') || lower.contains('travel')) {
       return Icons.hotel_rounded;
+    } else if (lower.contains('room') || lower.contains('flat') || lower.contains('apartment')) {
+      return Icons.apartment_rounded;
     } else if (lower.contains('activity') || lower.contains('entertain') || lower.contains('gaming')) {
       return Icons.sports_esports_rounded;
     } else if (lower.contains('tech') || lower.contains('gadget')) {
@@ -217,6 +219,8 @@ class _CategoryCardFromApiState extends State<CategoryCardFromApi> {
       return Icons.spa_rounded;
     } else if (lower.contains('hotel') || lower.contains('travel') || lower.contains('stay')) {
       return Icons.hotel_rounded;
+    } else if (lower.contains('room') || lower.contains('flat') || lower.contains('apartment')) {
+      return Icons.apartment_rounded;
     } else if (lower.contains('activit') || lower.contains('entertain')) {
       return Icons.sports_esports_rounded;
     } else if (lower.contains('night') || lower.contains('bar') || lower.contains('club')) {

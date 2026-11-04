@@ -5,7 +5,11 @@ import 'package:entertainer/features/offer/presentation/widgets/scratch_card_wid
 import 'package:entertainer/features/offer/presentation/pages/reward_history_page.dart';
 
 class ScratchWinPage extends StatefulWidget {
-  const ScratchWinPage({super.key});
+  /// Optional handler for when the page is embedded inside a tab shell.
+  /// When null the page behaves like a normal pushed route.
+  final VoidCallback? onBack;
+
+  const ScratchWinPage({super.key, this.onBack});
 
   @override
   State<ScratchWinPage> createState() => _ScratchWinPageState();
@@ -62,6 +66,18 @@ class _ScratchWinPageState extends State<ScratchWinPage> {
     });
   }
 
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+      return;
+    }
+
+    // Never pop the root route: doing so leaves Android with a black window.
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,7 +87,7 @@ class _ScratchWinPageState extends State<ScratchWinPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _handleBack,
         ),
         title: Text(
           'Scratch & Win',

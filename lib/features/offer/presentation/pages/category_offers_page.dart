@@ -17,8 +17,7 @@ class CategoryOffersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Map display name → API enum value
-    final categoryApiValue = categoryName.toUpperCase();
+    final categoryApiValue = _apiCategoryValue(categoryName);
 
     return BlocProvider(
       create: (_) => getIt<OffersBloc>()
@@ -30,6 +29,42 @@ class CategoryOffersPage extends StatelessWidget {
         )),
       child: _CategoryOffersView(categoryName: categoryName),
     );
+  }
+
+  /// Maps display names, slugs and enum values to the canonical API category
+  /// value. Unknown categories fall back to the uppercase input, which the
+  /// backend normalises to a slug.
+  static String _apiCategoryValue(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'dining':
+      case 'food':
+        return 'DINING';
+      case 'wellness':
+      case 'beauty':
+      case 'spa':
+        return 'WELLNESS';
+      case 'hotel':
+      case 'hotels':
+      case 'stay':
+        return 'HOTEL';
+      case 'rooms & flats':
+      case 'rooms-flats':
+      case 'rooms_flats':
+      case 'rooms':
+      case 'flats':
+        return 'ROOMS_FLATS';
+      case 'entertainment':
+      case 'activities':
+        return 'ENTERTAINMENT';
+      case 'retail':
+      case 'shopping':
+        return 'RETAIL';
+      case 'travel':
+      case 'getaways':
+        return 'TRAVEL';
+      default:
+        return value.trim().toUpperCase();
+    }
   }
 }
 
@@ -225,7 +260,9 @@ class _CategoryOffersViewState extends State<_CategoryOffersView> {
             TextButton(
               onPressed: () {
                 context.read<OffersBloc>().add(FetchOffersRequested(
-                      category: widget.categoryName.toUpperCase(),
+                      category: CategoryOffersPage._apiCategoryValue(
+                        widget.categoryName,
+                      ),
                       page: 1,
                       limit: 30,
                       refresh: true,

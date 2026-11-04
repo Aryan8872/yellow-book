@@ -31,24 +31,59 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Resolve app version from pubspec
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_line="$(grep -E '^version:' pubspec.yaml | head -n1 | sed -E 's/^version:[[:space:]]*//')"
+          if [ -z "$version_line" ]; then
+            echo "::error::Could not read 'version:' from pubspec.yaml"
+            exit 1
+          fi
+          version_name="${version_line%%+*}"
+          build_number="${version_line##*+}"
+          if [ "$build_number" = "$version_line" ] || [ -z "$build_number" ]; then
+            build_number="$(date +%s)"
+          fi
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
+          echo "Resolved app version: ${version_name}+${build_number}"
+
       - name: Run Build Runner
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Web Release
-        run: flutter build web --release --dart-define=BASE_URL=https://yellow-bookapi-production-551c.up.railway.app/api/v1
+        run: flutter build web --release --dart-define=BASE_URL=https://yellow-bookapi-production-551c.up.railway.app/api/v1 --dart-define=GOOGLE_SERVER_CLIENT_ID=${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
 
       - name: Decode Release Keystore from GitHub Secrets
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/app-release-key.jks
 
       - name: Build Android Release APK
-        run: flutter build apk --release --build-name=1.0.13 --build-number=13 --dart-define=BASE_URL=https://yellow-bookapi-production-551c.up.railway.app/api/v1 --dart-define=GEOAPIFY_MAP_KEY=${{ secrets.GEOAPIFY_MAP_KEY }}
+        run: flutter build apk --release --build-name=${{ steps.version.outputs.version_name }} --build-number=${{ steps.version.outputs.build_number }} --dart-define=BASE_URL=https://yellow-bookapi-production-551c.up.railway.app/api/v1 --dart-define=GEOAPIFY_MAP_KEY=${{ secrets.GEOAPIFY_MAP_KEY }} --dart-define=GOOGLE_SERVER_CLIENT_ID=${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: entertainer-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Generate in-app update manifest
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > app_version.json <<EOF
+          {
+            "latest_build_number": ${{ steps.version.outputs.build_number }},
+            "latest_version_name": "${{ steps.version.outputs.version_name }}",
+            "apk_download_url": "https://github.com/${{ github.repository }}/releases/latest/download/app-release.apk",
+            "release_notes": "Build ${{ github.run_number }} • ${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.build_number }}",
+            "is_force_update": false
+          }
+          EOF
+          cat app_version.json
 
       - name: Delete existing 'latest' release & tag (so APK asset is always replaced)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -65,6 +100,8 @@ jobs:
           body: "Direct APK build from GitHub Actions for in-app auto updates."
           draft: false
           prerelease: false
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            app_version.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

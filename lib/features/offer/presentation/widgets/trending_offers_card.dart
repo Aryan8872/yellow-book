@@ -14,7 +14,9 @@ const _categoryFallbacks = {
   'ENTERTAINMENT': 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=600&q=80',
   'RETAIL':        'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=600&q=80',
   'TRAVEL':        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-  'BEAUTY':        'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&q=80',
+  'HOTEL':         'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80',
+  'ROOMS_FLATS':   'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80',
+  'BEAUTY':        'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=600&q=80',
 };
 
 class TrendingOffersCard extends StatelessWidget {
@@ -102,7 +104,7 @@ class _OfferCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = offer.imageUrl ??
         (offer.images.isNotEmpty ? offer.images.first : null) ??
-        _categoryFallbacks[offer.category.name.toUpperCase()] ??
+        _categoryFallbacks[offer.category.toJson()] ??
         _categoryFallbacks['DINING']!;
 
     final location = offer.merchant?.branches.isNotEmpty == true

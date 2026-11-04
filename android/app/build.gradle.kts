@@ -9,7 +9,9 @@ plugins {
 
 android {
     namespace = "com.example.entertainer"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android 14.x requires API 37 at compile time.
+    // Pin explicitly so the app does not depend on the Flutter SDK default.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

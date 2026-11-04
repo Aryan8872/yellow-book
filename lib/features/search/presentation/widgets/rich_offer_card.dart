@@ -181,7 +181,7 @@ class RichOfferCard extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            offer.category.name.toUpperCase(),
+                            offer.category.displayName.toUpperCase(),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,

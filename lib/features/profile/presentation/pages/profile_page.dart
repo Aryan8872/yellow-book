@@ -18,7 +18,6 @@ import 'package:entertainer/features/offer/presentation/pages/favourites_page.da
 import 'package:entertainer/features/offer/presentation/pages/reward_history_page.dart';
 import 'package:entertainer/core/services/app_update_service.dart';
 import 'package:entertainer/core/services/update_available_dialog.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -29,7 +28,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   List<RedemptionModel> _redemptions = [];
-  String _currentVersion = 'v1.0.13+13';
+  String _currentVersion = '…';
 
   @override
   void initState() {
@@ -39,14 +38,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _loadAppVersion() async {
-    try {
-      final info = await PackageInfo.fromPlatform();
-      if (mounted) {
-        setState(() {
-          _currentVersion = 'v${info.version}+${info.buildNumber}';
-        });
-      }
-    } catch (_) {}
+    final label = await AppUpdateService.installedVersionLabel();
+    if (mounted) {
+      setState(() {
+        _currentVersion = label;
+      });
+    }
   }
 
   Future<void> _loadRedemptions() async {

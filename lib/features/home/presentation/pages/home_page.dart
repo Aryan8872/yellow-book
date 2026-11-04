@@ -1023,7 +1023,7 @@ class _HomeViewState extends State<_HomeView> {
                                         Row(
                                           children: [
                                             Text(
-                                              dealOfTheDay.category.name.toUpperCase(),
+                                              dealOfTheDay.category.displayName.toUpperCase(),
                                               style: GoogleFonts.plusJakartaSans(
                                                 fontSize: 10.5,
                                                 fontWeight: FontWeight.w800,
@@ -1967,7 +1967,18 @@ class _HomeViewState extends State<_HomeView> {
         return Icons.restaurant_rounded;
       case 'wellness':
       case 'spa':
+      case 'beauty':
+      case 'salon':
         return Icons.spa_rounded;
+      case 'hotel':
+      case 'hotels':
+      case 'stay':
+        return Icons.hotel_rounded;
+      case 'rooms-flats':
+      case 'rooms_flats':
+      case 'rooms':
+      case 'flats':
+        return Icons.apartment_rounded;
       case 'activities':
       case 'entertainment':
         return Icons.sports_esports_rounded;
@@ -1977,9 +1988,6 @@ class _HomeViewState extends State<_HomeView> {
       case 'travel':
       case 'getaways':
         return Icons.flight_takeoff_rounded;
-      case 'beauty':
-      case 'salon':
-        return Icons.face_retouching_natural_rounded;
       default:
         return Icons.local_offer_rounded;
     }
@@ -2015,7 +2023,8 @@ class _HomeViewState extends State<_HomeView> {
     (name: 'Activities', icon: Icons.sports_esports_rounded, bgColor: Color(0xFFE2E7FF), iconColor: AppTheme.crimsonPrimary),
     (name: 'Shopping', icon: Icons.shopping_bag_rounded, bgColor: Color(0xFFFFDDB8), iconColor: Color(0xFF653E00)),
     (name: 'Getaways', icon: Icons.flight_takeoff_rounded, bgColor: Color(0xFFDAE2FD), iconColor: Color(0xFF006C4A)),
-    (name: 'Salon', icon: Icons.face_retouching_natural_rounded, bgColor: Color(0xFFFFDADA), iconColor: Color(0xFF920028)),
+    (name: 'Hotel', icon: Icons.hotel_rounded, bgColor: Color(0xFFDBEAFE), iconColor: Color(0xFF1D4ED8)),
+    (name: 'Rooms & Flats', icon: Icons.apartment_rounded, bgColor: Color(0xFFEDE9FE), iconColor: Color(0xFF6D28D9)),
   ];
 
   String _subtitleForCategory(String slug) {
@@ -2026,6 +2035,13 @@ class _HomeViewState extends State<_HomeView> {
         return 'Great food';
       case 'hotel':
       case 'hotels':
+      case 'stay':
+        return 'Comfort stay';
+      case 'rooms-flats':
+      case 'rooms_flats':
+      case 'rooms':
+      case 'flats':
+        return 'Find a home';
       case 'getaways':
       case 'travel':
         return 'Comfort stay';
@@ -2062,9 +2078,15 @@ class _HomeViewState extends State<_HomeView> {
         return const Color(0xFFDC2626); // red-600
       case 'hotel':
       case 'hotels':
+        return const Color(0xFF2563EB); // blue-600
+      case 'rooms-flats':
+      case 'rooms_flats':
+      case 'rooms':
+      case 'flats':
+        return const Color(0xFF7C3AED); // violet-600
       case 'travel':
       case 'getaways':
-        return const Color(0xFF2563EB); // blue-600
+        return const Color(0xFF0EA5E9); // sky-500
       case 'shop':
       case 'shopping':
       case 'retail':
@@ -2096,6 +2118,13 @@ class _HomeViewState extends State<_HomeView> {
         return 'assets/category/dining.png';
       case 'hotel':
       case 'hotels':
+      case 'stay':
+        return 'assets/category/hotels.png';
+      case 'rooms-flats':
+      case 'rooms_flats':
+      case 'rooms':
+      case 'flats':
+        return 'assets/category/hotels.png';
       case 'travel':
       case 'getaways':
         return 'assets/category/hotels.png';

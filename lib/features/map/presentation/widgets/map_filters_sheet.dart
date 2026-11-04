@@ -39,10 +39,11 @@ class _MapFiltersSheetState extends State<MapFiltersSheet> {
     'All',
     'Dining',
     'Wellness',
+    'Hotel',
+    'Rooms & Flats',
     'Entertainment',
     'Retail',
     'Travel',
-    'Beauty',
   ];
 
   late String _category = widget.category;

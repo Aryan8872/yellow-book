@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/core/layout/main_shell_screen.dart';
+import '../../data/datasources/services/google_auth_service.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -45,9 +45,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   String? _formGeneralError;
 
   // Google Sign-In
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email'],
-  );
+  final GoogleAuthService _googleAuth = GoogleAuthService();
 
   // Staggered Animation Controller
   late AnimationController _animationController;
@@ -191,7 +189,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     FocusScope.of(context).unfocus();
     if (_validateForm()) {
       final bloc = context.read<AuthBloc>();
-      if (true) {
+      if (_isLoginMode) {
         bloc.add(
           LoginRequested(
             email: _emailController.text.trim(),
@@ -212,28 +210,21 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (!mounted) return;
+    setState(() => _formGeneralError = null);
+
+    final bloc = context.read<AuthBloc>();
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final idToken = googleAuth.idToken;
-
-      if (idToken == null) {
-        setState(() {
-          _formGeneralError = 'Failed to get Google ID token';
-        });
-        return;
-      }
-
+      final idToken = await _googleAuth.signInAndGetIdToken();
       if (!mounted) return;
-      final bloc = context.read<AuthBloc>();
       bloc.add(GoogleLoginRequested(idToken: idToken));
-    } catch (e) {
+    } on GoogleAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _formGeneralError = e.message);
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
-        _formGeneralError = 'Google sign-in failed: ${e.toString()}';
+        _formGeneralError = 'Google sign-in failed. Please try again.';
       });
     }
   }
@@ -525,18 +516,20 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                           child: InkWell(
                                             borderRadius: BorderRadius.circular(16),
                                             onTap: isLoading ? null : _handleGoogleSignIn,
-                                            child: const Row(
+                                            child: Row(
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
-                                                Icon(
+                                                const Icon(
                                                   Icons.g_mobiledata,
                                                   size: 24,
                                                   color: Color(0xFF4285F4),
                                                 ),
-                                                SizedBox(width: 12),
+                                                const SizedBox(width: 12),
                                                 Text(
-                                                  'Sign in with Google',
-                                                  style: TextStyle(
+                                                  _isLoginMode
+                                                      ? 'Continue with Google'
+                                                      : 'Sign up with Google',
+                                                  style: const TextStyle(
                                                     color: AppTheme.textPrimary,
                                                     fontSize: 15,
                                                     fontWeight: FontWeight.w600,

@@ -335,7 +335,7 @@ class AccountPage extends StatelessWidget {
                     _buildSettingsTile(
                       icon: Icons.system_update_rounded,
                       title: 'Check for Updates',
-                      subtitle: 'OfferNepal v1.0.10+10',
+                      subtitle: 'Tap to check the installed version',
                       onTap: () async {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(

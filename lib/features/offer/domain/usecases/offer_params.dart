@@ -91,7 +91,7 @@ class CreateOfferParams {
       'title': title,
       'description': description,
       'terms': terms,
-      'category': category.name,
+      'category': category.toJson(),
       'estimatedSavingsNpr': estimatedSavingsNpr,
       'maxPerUser': maxPerUser,
       'isFeatured': isFeatured,

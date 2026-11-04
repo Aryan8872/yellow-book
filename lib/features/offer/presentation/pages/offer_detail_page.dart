@@ -48,7 +48,7 @@ class OfferDetailPage extends StatelessWidget {
         BlocProvider<OffersBloc>(
           create: (context) => getIt<OffersBloc>()
             ..add(FetchOffersRequested(
-              category: offer.category.name,
+              category: offer.category.toJson(),
               limit: 10,
               radiusKm: 50,
             )),
@@ -405,7 +405,7 @@ class _OfferDetailViewState extends State<_OfferDetailView> {
                 );
                 context.read<OffersBloc>().add(
                   FetchOffersRequested(
-                    category: widget.offer.category.name,
+                    category: widget.offer.category.toJson(),
                     limit: 10,
                     radiusKm: 50,
                   ),
@@ -1402,18 +1402,24 @@ class _OfferDetailViewState extends State<_OfferDetailView> {
 
   Widget _buildExploreMoreCategories(OfferEntity offer) {
     // Generate intelligent search query terms based on offer category, title, and popular keywords
+    final categoryLabel = offer.category.displayName;
     final searchTerms = <String>{
-      offer.category.name,
-      if (offer.category.name.toLowerCase().contains('dining') || offer.category.name.toLowerCase().contains('food')) ...[
+      categoryLabel,
+      if (categoryLabel.toLowerCase().contains('dining') || categoryLabel.toLowerCase().contains('food')) ...[
         'Buffet Deals',
         'Momo & Snacks',
         'Fine Dining',
         'Rooftop Lounge',
-      ] else if (offer.category.name.toLowerCase().contains('spa') || offer.category.name.toLowerCase().contains('wellness')) ...[
+      ] else if (categoryLabel.toLowerCase().contains('spa') || categoryLabel.toLowerCase().contains('wellness') || categoryLabel.toLowerCase().contains('beauty')) ...[
         'Full Body Massage',
         'Ayurvedic Therapy',
         'Sauna & Steam',
         'Salon & Hair',
+      ] else if (categoryLabel.toLowerCase().contains('hotel') || categoryLabel.toLowerCase().contains('room') || categoryLabel.toLowerCase().contains('flat')) ...[
+        'Weekend Staycation',
+        'Deluxe Rooms',
+        'Family Suites',
+        'Long Stay Rentals',
       ] else ...[
         'Weekend Getaway',
         'Family Deals',
@@ -1456,7 +1462,7 @@ class _OfferDetailViewState extends State<_OfferDetailView> {
             spacing: 8,
             runSpacing: 8,
             children: searchTerms.map((term) {
-              final isPrimary = term == offer.category.name;
+              final isPrimary = term == categoryLabel;
               return GestureDetector(
                 onTap: () {
                   Navigator.push(

@@ -109,15 +109,17 @@ class _BrowseMerchantOfferDealPageState extends State<BrowseMerchantOfferDealPag
             // Extract dynamic categories from offers
             final categorySet = <String>{'All'};
             for (final o in offers) {
-              if (o.category.name.isNotEmpty) {
-                categorySet.add(o.category.name);
+              final label = o.category.displayName;
+              if (label.isNotEmpty) {
+                categorySet.add(label);
               }
             }
 
             // Filter offers by category
             var filtered = offers.where((o) {
               if (_selectedCategory == 'All') return true;
-              return o.category.name.toLowerCase() == _selectedCategory.toLowerCase();
+              return o.category.displayName.toLowerCase() ==
+                  _selectedCategory.toLowerCase();
             }).toList();
 
             // Sort offers
@@ -625,7 +627,7 @@ class _BrowseMerchantOfferDealPageState extends State<BrowseMerchantOfferDealPag
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          offer.category.name,
+                          offer.category.displayName,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w700,

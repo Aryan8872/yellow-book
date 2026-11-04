@@ -46,7 +46,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       HomePage(user: widget.user),
       const SearchPage(),
       const SizedBox(), // placeholder for center FAB tab
-      const ScratchWinPage(),
+      ScratchWinPage(onBack: () => _onTabTapped(0)),
       const ProfilePage(),
     ];
 
@@ -83,36 +83,46 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: AppTheme.canvasBg,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: _OfferNepalFAB(
-        isActive: _currentIndex == 2,
-        onTap: () => _onTabTapped(2),
-      ),
-      bottomNavigationBar: _NotchedNavBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        bottomInset: bottomInset,
-      ),
-      body: Column(
-        children: [
-          const OfflineBanner(),
-          Expanded(
-            child: RepaintBoundary(
-              child: IndexedStack(
-                index: _pageIndex,
-                children: [
-                  _pages[0], // Home
-                  _pages[1], // Explore
-                  _pages[3], // Saved
-                  _pages[4], // Profile
-                ],
+    return PopScope(
+      // Tabs are layered inside one route: on a non-home tab, Android back
+      // returns Home instead of popping the last route (which renders black).
+      canPop: _currentIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        backgroundColor: AppTheme.canvasBg,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButton: _OfferNepalFAB(
+          isActive: _currentIndex == 2,
+          onTap: () => _onTabTapped(2),
+        ),
+        bottomNavigationBar: _NotchedNavBar(
+          currentIndex: _currentIndex,
+          onTap: _onTabTapped,
+          bottomInset: bottomInset,
+        ),
+        body: Column(
+          children: [
+            const OfflineBanner(),
+            Expanded(
+              child: RepaintBoundary(
+                child: IndexedStack(
+                  index: _pageIndex,
+                  children: [
+                    _pages[0], // Home
+                    _pages[1], // Explore
+                    _pages[3], // Saved
+                    _pages[4], // Profile
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

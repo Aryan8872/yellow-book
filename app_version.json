@@ -1,7 +1,7 @@
 {
-  "latest_build_number": 14,
-  "latest_version_name": "1.0.14",
+  "latest_build_number": 15,
+  "latest_version_name": "1.0.15",
   "apk_download_url": "https://github.com/Aryan8872/yellow-book/releases/latest/download/app-release.apk",
-  "release_notes": "• bug fixes \n UI changes",
+  "release_notes": "• App updater bug fix",
   "is_force_update": false
 }

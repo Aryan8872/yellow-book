@@ -142,9 +142,9 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         'branchId': branch.id,
         'branchName': branch.name,
         'hotelName': offer.merchantName ?? offer.merchant?.name ?? 'Merchant',
-        'category': _categoryDisplayName(offer.category.name),
+        'category': offer.category.displayName,
         'categoryId': offer.categoryId,
-        'categorySlug': offer.category.name.toUpperCase(),
+        'categorySlug': offer.category.toJson(),
         'highlightTag': offer.discountPercentage != null
             ? '${offer.discountPercentage}% OFF'
             : 'BOGOF',
@@ -190,25 +190,6 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     return 2 *
         earthRadiusKm *
         math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine));
-  }
-
-  static String _categoryDisplayName(String slug) {
-    switch (slug.toLowerCase()) {
-      case 'dining':
-        return 'Dining';
-      case 'wellness':
-        return 'Activities';
-      case 'entertainment':
-        return 'Activities';
-      case 'retail':
-        return 'Offers';
-      case 'travel':
-        return 'Hotels';
-      case 'beauty':
-        return 'Activities';
-      default:
-        return 'Offers';
-    }
   }
 
   // ── Event handlers ───────────────────────────────────────────────────────
@@ -389,7 +370,12 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     switch (category) {
       case 'Dining':
         return 'DINING';
+      case 'Hotel':
       case 'Hotels':
+        return 'HOTEL';
+      case 'Rooms & Flats':
+      case 'Rooms/Flats':
+        return 'ROOMS_FLATS';
       case 'Travel':
         return 'TRAVEL';
       case 'Offers':
@@ -400,7 +386,8 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       case 'Entertainment':
         return 'ENTERTAINMENT';
       case 'Beauty':
-        return 'BEAUTY';
+        // Legacy label retained for older cached filter state.
+        return 'WELLNESS';
       default:
         return null;
     }
@@ -535,13 +522,15 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       final itemCategorySlug = item['categorySlug'] as String? ?? '';
       final categoryMatches = switch (category) {
         'All' => true,
-        'Hotels' || 'Travel' => itemCategorySlug == 'TRAVEL',
+        'Hotel' || 'Hotels' => itemCategorySlug == 'HOTEL',
+        'Rooms & Flats' || 'Rooms/Flats' => itemCategorySlug == 'ROOMS_FLATS',
+        'Travel' => itemCategorySlug == 'TRAVEL',
         'Offers' || 'Retail' => itemCategorySlug == 'RETAIL',
-        'Activities' => const {
+        'Wellness' => const {
           'WELLNESS',
-          'ENTERTAINMENT',
           'BEAUTY',
         }.contains(itemCategorySlug),
+        'Entertainment' => itemCategorySlug == 'ENTERTAINMENT',
         _ =>
           itemCategorySlug == category.toUpperCase() ||
               itemCategory == category,
