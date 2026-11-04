@@ -91,6 +91,7 @@ dependencies:
 
   # Pull-to-refresh
   pull_to_refresh: ^2.0.0
+  permission_handler: ^13.0.2
 
 dev_dependencies:
   flutter_test:

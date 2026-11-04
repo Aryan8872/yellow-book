@@ -7,7 +7,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:entertainer/core/di/service_loader.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:entertainer/core/network/upload_remote_datasource.dart';
+import 'package:entertainer/core/services/image_compressor.dart';
+import 'package:entertainer/core/services/retry_helper.dart';
 import 'package:entertainer/core/theme/app_theme.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:entertainer/features/auth/presentation/bloc/auth_event.dart';
@@ -22,6 +25,8 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
+  final ImageCompressor _compressor = ImageCompressor();
+  final RetryHelper _retryHelper = RetryHelper();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
